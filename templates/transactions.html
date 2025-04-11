@@ -25,7 +25,7 @@
                         <tr>
                             <td>{{ tx.transaction_date.strftime('%B %d, %Y') }}</td>
                             <td>
-                                <a href="{{ url_for('land_details', land_id=tx.land_id) }}">
+                                <a href="{{ url_for('landDetails', land_id=tx.land_id) }}">
                                     {{ tx.land.title }}
                                 </a>
                             </td>

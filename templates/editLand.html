@@ -5,7 +5,7 @@
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('land_details', land_id=land.id) }}">{{ land.title }}</a>
+            <li class="breadcrumb-item"><a href="{{ url_for('landDetails', land_id=land.id) }}">{{ land.title }}</a>
             </li>
             <li class="breadcrumb-item active" aria-current="page">Edit Land</li>
         </ol>
@@ -90,7 +90,7 @@
             </div>
 
             <div class="text-center mt-4">
-                <a href="{{ url_for('land_details', land_id=land.id) }}" class="btn btn-outline-primary">Cancel and Go
+                <a href="{{ url_for('landDetails', land_id=land.id) }}" class="btn btn-outline-primary">Cancel and Go
                     Back</a>
             </div>
         </div>

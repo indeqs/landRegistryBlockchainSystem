@@ -1,0 +1,111 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="mb-4">Land Marketplace</h1>
+
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="input-group">
+                <input type="text" class="form-control" id="search-input" placeholder="Search by title or location...">
+                <button class="btn btn-outline-primary" type="button" id="search-button">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <select class="form-select" id="sort-select">
+                <option value="newest">Newest First</option>
+                <option value="price-low">Price: Low to High</option>
+                <option value="price-high">Price: High to Low</option>
+            </select>
+        </div>
+    </div>
+
+    {% if lands %}
+    <div class="row row-cols-1 row-cols-md-3 g-4" id="lands-container">
+        {% for land in lands %}
+        <div class="col">
+            <div class="card h-100 shadow-sm land-card">
+                <div class="position-relative">
+                    <img src="{{ url_for('static', filename='uploads/' + land.image) }}" class="card-img-top"
+                        alt="{{ land.title }}">
+                    <span class="badge bg-success position-absolute top-0 end-0 m-2">For Sale</span>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ land.title }}</h5>
+                    <p class="card-text"><i class="fas fa-map-marker-alt me-2"></i>{{ land.location }}</p>
+                    <p class="card-text text-truncate">{{ land.description }}</p>
+                    <p class="card-text">
+                        <small class="text-muted">Owner: {{ land.owner.username }}</small>
+                    </p>
+                    <h5 class="card-text text-primary">${{ "%.2f"|format(land.price) }}</h5>
+                </div>
+                <div class="card-footer bg-transparent border-top-0">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('land_details', land_id=land.id) }}" class="btn btn-outline-primary">View
+                            Details</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>There are no lands currently listed for sale.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        const sortSelect = document.getElementById('sort-select');
+        const landsContainer = document.getElementById('lands-container');
+
+        if (searchButton && searchInput && landsContainer) {
+            searchButton.addEventListener('click', function () {
+                const searchValue = searchInput.value.toLowerCase();
+                const landCards = landsContainer.querySelectorAll('.land-card');
+
+                landCards.forEach(card => {
+                    const title = card.querySelector('.card-title').textContent.toLowerCase();
+                    const location = card.querySelector('.card-text:nth-of-type(1)').textContent.toLowerCase();
+
+                    if (title.includes(searchValue) || location.includes(searchValue)) {
+                        card.parentElement.style.display = '';
+                    } else {
+                        card.parentElement.style.display = 'none';
+                    }
+                });
+            });
+        }
+
+        if (sortSelect && landsContainer) {
+            sortSelect.addEventListener('change', function () {
+                const sortValue = this.value;
+                const landCards = Array.from(landsContainer.querySelectorAll('.col'));
+
+                landCards.sort((a, b) => {
+                    if (sortValue === 'price-low') {
+                        const priceA = parseFloat(a.querySelector('.text-primary').textContent.replace('$', ''));
+                        const priceB = parseFloat(b.querySelector('.text-primary').textContent.replace('$', ''));
+                        return priceA - priceB;
+                    } else if (sortValue === 'price-high') {
+                        const priceA = parseFloat(a.querySelector('.text-primary').textContent.replace('$', ''));
+                        const priceB = parseFloat(b.querySelector('.text-primary').textContent.replace('$', ''));
+                        return priceB - priceA;
+                    }
+                    return 0;
+                });
+
+                landCards.forEach(card => landsContainer.appendChild(card));
+            });
+        }
+    });
+</script>
+{% endblock %}

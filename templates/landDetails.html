@@ -1,0 +1,57 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('marketplace') }}">Marketplace</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ land.title }}</li>
+        </ol>
+    </nav>
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card shadow-sm mb-4">
+                <img src="{{ url_for('static', filename='uploads/' + land.image) }}" class="card-img-top img-fluid"
+                    alt="{{ land.title }}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h1 class="card-title">{{ land.title }}</h1>
+                        <span class="badge {% if land.for_sale %}bg-success{% else %}bg-secondary{% endif %} fs-6">
+                            {% if land.for_sale %}For Sale{% else %}Not For Sale{% endif %}
+                        </span>
+                    </div>
+                    <h5 class="text-primary mb-3">${{ "%.2f"|format(land.price) }}</h5>
+                    <p class="card-text mb-4"><i class="fas fa-map-marker-alt me-2"></i>{{ land.location }}</p>
+
+                    <h4>Description</h4>
+                    <p class="card-text">{{ land.description }}</p>
+
+                    <h4 class="mt-4">Blockchain Information</h4>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <tbody>
+                                <tr>
+                                    <th>Blockchain ID</th>
+                                    <td>{{ land.blockchain_id }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Registration Date</th>
+                                    <td>{{ land.created_at.strftime('%B %d, %Y') }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">Owner Information</h4>
+                    <div class="d-flex align-items-center mb-3">
+                        <img src="{{ url_for('static', filename='uploads/' + land.owner.profile_image) }}"
+                            alt="{{ land.owner.username }}" class="rounded-circle me-3" width="50" height="50">
+                        <div>
+                            <h5 class="mb-0">{{ land.owner.username }}</h5>

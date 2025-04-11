@@ -1,0 +1,77 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <h1 class="card-title text-center mb-4">Your Profile</h1>
+
+                    <div class="text-center mb-4">
+                        <img src="{{ url_for('static', filename='uploads/' + user.profile_image) }}"
+                            alt="Profile Picture" class="rounded-circle profile-img-lg">
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Username</h5>
+                            <p class="form-control">{{ user.username }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Email</h5>
+                            <p class="form-control">{{ user.email }}</p>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>Blockchain Address</h5>
+                        <div class="input-group">
+                            <input type="text" class="form-control" value="{{ user.blockchain_address }}" readonly>
+                            <button class="btn btn-outline-secondary" type="button"
+                                onclick="copyToClipboard('{{ user.blockchain_address }}')">
+                                <i class="fas fa-copy"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
+                    <h3 class="mb-3">Update Profile Image</h3>
+                    <form method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="profile_image" class="form-label">New Profile Image</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="fas fa-image"></i></span>
+                                <input type="file" class="form-control" id="profile_image" name="profile_image"
+                                    accept="image/*" required>
+                            </div>
+                            <div class="form-text">Upload a new profile picture (JPG, PNG or GIF).</div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">Update Profile Image</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="text-center mt-4">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function () {
+            alert('Address copied to clipboard!');
+        }, function () {
+            alert('Failed to copy address.');
+        });
+    }
+</script>
+{% endblock %}

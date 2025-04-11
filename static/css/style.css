@@ -3,19 +3,49 @@ body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+.navbar-profile {
+    position: relative;
+    display: inline-block;
+}
+
 /* Profile image styling */
 .profile-img {
-    width: 100px;
-    height: 100px;
+    width: 40px;
+    height: 40px;
     object-fit: cover;
-    border-radius: 50%; /* can remove this? */
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    transition: all 0.2s ease;
+}
+
+.profile-img:hover {
+    border-color: #ffffff;
+    transform: scale(1.05);
 }
 
 .profile-img-lg {
     width: 150px;
     height: 150px;
     object-fit: cover;
-    border-radius: 50%; /* can remove this? */
+    border-radius: 50%;
+    /* can remove this? */
+}
+
+/* Wallet connection button styles */
+#connectWalletBtn {
+    transition: all 0.3s ease;
+}
+
+#connectWalletBtn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Disconnect wallet button */
+#disconnectWallet {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
 }
 
 /* Process circle styling */
@@ -49,9 +79,10 @@ img[alt="QR Code"] {
     vertical-align: middle;
 }
 
-/* Badge styling */
+/* Connected wallet badge styling */
 .badge.bg-success {
-    background-color: #28a745 !important;
+    font-size: 0.8rem;
+    padding: 0.35em 0.65em;
 }
 
 .badge.bg-secondary {
@@ -62,11 +93,29 @@ img[alt="QR Code"] {
     background-color: #dc3545 !important;
 }
 
-/* Card styling */
-.card {
-    border-radius: 0.5rem;
-    transition: transform 0.2s ease-in-out;
+/* Quick actions card */
+.card .btn-primary {
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
 }
+
+.card .btn-primary:after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+    z-index: -1;
+}
+
+.card .btn-primary:hover:after {
+    left: 0;
+}
+
 
 .card:hover {
     transform: translateY(-5px);
@@ -85,6 +134,15 @@ img[alt="QR Code"] {
 
 .land-card .card-img-top {
     height: 180px;
+}
+
+.land-card {
+    transition: all 0.3s ease;
+}
+
+.land-card:hover {
+    transform: translateY(-8px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* Button styling */
@@ -297,5 +355,17 @@ footer a:hover {
 
     .hero-section p {
         font-size: 1rem;
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+    .profile-img {
+        width: 35px;
+        height: 35px;
+    }
+
+    h1 {
+        font-size: 1.75rem;
     }
 }

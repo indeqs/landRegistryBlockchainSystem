@@ -55,7 +55,7 @@ class User(db.Model):
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     blockchain_address = db.Column(db.String(42), unique=True, nullable=False)
-    profile_image = db.Column(db.String(200), default="default_profile.png")
+    profile_image = db.Column(db.String(200), default="default_profile.jpg")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
@@ -143,7 +143,7 @@ def register():
         wallet = w3.eth.account.create()
 
         # Assign default profile image
-        profile_image = "default_profile.png"
+        profile_image = "default_profile.jpg"
 
         # Create user in database
         new_user = User(

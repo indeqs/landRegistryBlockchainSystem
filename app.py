@@ -108,7 +108,11 @@ def save_file(file, folder):
         filename = str(uuid.uuid4()) + "." + file.filename.rsplit(".", 1)[1].lower()
         file_path = os.path.join(app.config["UPLOAD_FOLDER"], folder, filename)
         file.save(file_path)
-        return os.path.join(folder, filename)
+        # Return the path relative to the uploads directory so it's consistent with default_profile.jpg
+        if folder == "profiles":
+            return filename  # Just return filename for profile images to maintain consistency
+        else:
+            return os.path.join(folder, filename)
     return None
 
 
@@ -222,6 +226,7 @@ def profile():
             if file.filename:
                 saved_path = save_file(file, "profiles")
                 if saved_path:
+                    # Store just the filename for profile images
                     user.profile_image = saved_path
                     db.session.commit()
                     flash("Profile image updated successfully", "success")

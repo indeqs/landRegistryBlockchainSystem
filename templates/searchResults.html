@@ -36,7 +36,7 @@
                 <div class="position-relative">
                     <img src="{{ url_for('static', filename='uploads/' + land.image) }}" class="card-img-top"
                         alt="{{ land.title }}">
-                    <span class="badge bg-success position-absolute top-0 end-0 m-2">For Sale</span>
+                    <span class="badge bg-success position-absolute">For Sale</span>
                 </div>
                 <div class="card-body">
                     <h5 class="card-title">{{ land.title }}</h5>
@@ -47,7 +47,7 @@
                     </p>
                     <h5 class="card-text text-primary">${{ "%.2f"|format(land.price) }}</h5>
                 </div>
-                <div class="card-footer bg-transparent border-top-0">
+                <div class="card-footer">
                     <div class="d-grid gap-2">
                         <a href="{{ url_for('landDetails', land_id=land.id) }}" class="btn btn-outline-primary">View
                             Details</a>

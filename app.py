@@ -142,14 +142,8 @@ def register():
         # Generate blockchain wallet
         wallet = w3.eth.account.create()
 
-        # Save profile image if provided
+        # Assign default profile image
         profile_image = "default_profile.png"
-        if "profile_image" in request.files:
-            file = request.files["profile_image"]
-            if file.filename:
-                saved_path = save_file(file, "profiles")
-                if saved_path:
-                    profile_image = saved_path
 
         # Create user in database
         new_user = User(
@@ -163,17 +157,6 @@ def register():
         try:
             db.session.add(new_user)
             db.session.commit()
-
-            # Register user on blockchain
-            tx = {
-                "from": wallet.address,
-                "gas": 2000000,
-                "gasPrice": w3.toWei("50", "gwei"),
-                "nonce": w3.eth.getTransactionCount(wallet.address),
-            }
-
-            # This part would need to be adjusted for actual deployment
-            # Here we're simulating blockchain registration
 
             flash("Registration successful! You can now log in.", "success")
             return redirect(url_for("login"))

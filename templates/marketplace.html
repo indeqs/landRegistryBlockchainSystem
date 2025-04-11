@@ -27,10 +27,10 @@
         {% for land in lands %}
         <div class="col">
             <div class="card h-100 shadow-sm land-card">
-                <div class="position-relative">
+                <div>
                     <img src="{{ url_for('static', filename='uploads/' + land.image) }}" class="card-img-top"
                         alt="{{ land.title }}">
-                    <span class="badge bg-success position-absolute top-0 end-0 m-2">For Sale</span>
+                    <span class="badge bg-success">For Sale</span>
                 </div>
                 <div class="card-body">
                     <h5 class="card-title">{{ land.title }}</h5>

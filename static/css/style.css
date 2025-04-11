@@ -1,14 +1,21 @@
+/* General styles */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
 /* Profile image styling */
 .profile-img {
     width: 100px;
     height: 100px;
     object-fit: cover;
+    border-radius: 50%; /* can remove this? */
 }
 
 .profile-img-lg {
     width: 150px;
     height: 150px;
     object-fit: cover;
+    border-radius: 50%; /* can remove this? */
 }
 
 /* Process circle styling */
@@ -24,7 +31,7 @@
     font-weight: bold;
 }
 
-/* Truncate text */
+/* Text utilities */
 .text-truncate {
     white-space: nowrap;
     overflow: hidden;
@@ -51,14 +58,72 @@ img[alt="QR Code"] {
     background-color: #6c757d !important;
 }
 
-/* Card shadow styling */
-.card.shadow-sm {
-    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+.badge.bg-danger {
+    background-color: #dc3545 !important;
 }
 
-/* Button spacing */
+/* Card styling */
+.card {
+    border-radius: 0.5rem;
+    transition: transform 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card.shadow-sm {
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075) !important;
+}
+
+.card-img-top {
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+    height: 200px;
+    object-fit: cover;
+}
+
+.land-card .card-img-top {
+    height: 180px;
+}
+
+/* Button styling */
+.btn {
+    border-radius: 0.25rem;
+    padding: 0.5rem 1rem;
+}
+
 .btn-outline-primary {
     margin-right: 0.5rem;
+}
+
+.btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+.btn-primary:hover {
+    background-color: #0069d9;
+    border-color: #0062cc;
+}
+
+.btn-success {
+    background-color: #28a745;
+    border-color: #28a745;
+}
+
+.btn-success:hover {
+    background-color: #218838;
+    border-color: #1e7e34;
+}
+
+/* Form styling */
+.form-control {
+    border-radius: 0.25rem;
+}
+
+.input-group-text {
+    background-color: #f8f9fa;
 }
 
 /* Hero section styling */
@@ -69,21 +134,44 @@ img[alt="QR Code"] {
 
 .hero-section h1 {
     font-size: 3rem;
+    font-weight: 700;
 }
 
 .hero-section h2 {
     font-size: 2rem;
+    color: #6c757d;
 }
 
 .hero-section p {
     font-size: 1.25rem;
+    color: #6c757d;
+}
+
+.hero-section img[src*="hero-image.png"] {
+    max-width: 100%;
+    height: auto;
+    min-height: 500px;
+    /* Increase minimum height for better visibility */
+}
+
+img[src*="how-it-works.png"] {
+    width: 100%;
+    max-width: 800px;
+    /* Increase max width */
+    height: auto;
+    min-height: 500px;
+    /* Increase minimum height for better visibility */
+    display: block;
+    margin: 0 auto;
 }
 
 /* Feature icon styling */
 .feature-icon {
     font-size: 2rem;
     color: #007bff;
+    margin-bottom: 1rem;
 }
+
 
 /* Footer styling */
 footer {
@@ -98,4 +186,116 @@ footer a {
 
 footer a:hover {
     text-decoration: underline;
+    color: #f8f9fa;
+}
+
+.social-icons a {
+    font-size: 1.2rem;
+    margin-right: 0.5rem;
+    transition: color 0.2s ease-in-out;
+}
+
+.social-icons a:hover {
+    color: #007bff;
+}
+
+/* Breadcrumb styling */
+.breadcrumb {
+    background-color: transparent;
+    padding: 0.5rem 0;
+}
+
+.breadcrumb-item a {
+    color: #007bff;
+    text-decoration: none;
+}
+
+.breadcrumb-item.active {
+    color: #6c757d;
+}
+
+/* Alert styling */
+.alert {
+    border-radius: 0.25rem;
+}
+
+.alert-link {
+    text-decoration: none;
+    font-weight: bold;
+}
+
+/* Transaction history table */
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* Marketplace search and filter */
+#search-input,
+#sort-select {
+    border-radius: 0.25rem;
+}
+
+/* Form switch styling */
+.form-check-input:checked {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+/* Navbar link styling */
+.navbar-nav .nav-link {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9) !important;
+    transition: all 0.3s ease;
+}
+
+.navbar-nav .nav-link:hover {
+    color: #ffffff !important;
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+}
+
+/* Special styling for login and register links */
+.navbar-nav .nav-item:nth-last-child(2) .nav-link,
+.navbar-nav .nav-item:last-child .nav-link {
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    padding: 0.5rem 1rem;
+    margin-left: 0.5rem;
+    font-weight: 600;
+}
+
+.navbar-nav .nav-item:last-child .nav-link {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.navbar-nav .nav-item:nth-last-child(2) .nav-link:hover,
+.navbar-nav .nav-item:last-child .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.4);
+    transform: translateY(-2px);
+}
+
+/* Land details page */
+.land-details-image {
+    max-height: 400px;
+    object-fit: cover;
+    width: 100%;
+    border-radius: 0.5rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 3rem 0;
+    }
+
+    .hero-section h1 {
+        font-size: 2.5rem;
+    }
+
+    .hero-section h2 {
+        font-size: 1.5rem;
+    }
+
+    .hero-section p {
+        font-size: 1rem;
+    }
 }

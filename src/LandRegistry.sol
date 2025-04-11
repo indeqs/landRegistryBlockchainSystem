@@ -5,194 +5,114 @@ contract LandRegistry {
     struct Land {
         uint256 id;
         address owner;
-        uint256 price;
+        string title;
         string location;
         string description;
-        string imageHash;
+        uint256 price;
         bool forSale;
+        uint256 registrationDate;
     }
-
-    struct User {
-        string name;
-        string email;
-        string profileImageHash;
-        bool isRegistered;
+    
+    struct Transaction {
+        uint256 landId;
+        address seller;
+        address buyer;
+        uint256 price;
+        uint256 transactionDate;
     }
-
+    
+    // Mapping from land ID to Land struct
     mapping(uint256 => Land) public lands;
-    mapping(address => User) public users;
-    mapping(address => uint256[]) public userLands;
-
-    uint256 public landCounter = 0;
-
-    event UserRegistered(address indexed userAddress, string name);
-    event LandRegistered(uint256 indexed landId, address indexed owner);
-    event LandOffered(uint256 indexed landId, uint256 price);
-    event LandSold(
-        uint256 indexed landId,
-        address indexed oldOwner,
-        address indexed newOwner,
-        uint256 price
-    );
-    event ProfileUpdated(address indexed userAddress, string profileImageHash);
-
-    modifier onlyRegistered() {
-        require(users[msg.sender].isRegistered, "User not registered");
-        _;
-    }
-
+    
+    // Array to store all transaction records
+    Transaction[] public transactions;
+    
+    // Mapping from user address to owned land IDs
+    mapping(address => uint256[]) public landsByOwner;
+    
+    // Counter for land IDs
+    uint256 private landIdCounter;
+    
+    // Events
+    event LandRegistered(uint256 indexed landId, address indexed owner, uint256 timestamp);
+    event LandTransferred(uint256 indexed landId, address indexed from, address indexed to, uint256 price, uint256 timestamp);
+    event LandStatusChanged(uint256 indexed landId, bool forSale, uint256 timestamp);
+    event LandPriceChanged(uint256 indexed landId, uint256 newPrice, uint256 timestamp);
+    
+    // Modifiers
     modifier onlyLandOwner(uint256 _landId) {
-        require(lands[_landId].owner == msg.sender, "Not the land owner");
+        require(lands[_landId].owner == msg.sender, "Only the land owner can perform this action");
         _;
     }
-
-    function registerUser(
-        string memory _name,
-        string memory _email,
-        string memory _profileImageHash
-    ) public {
-        require(!users[msg.sender].isRegistered, "User already registered");
-
-        users[msg.sender] = User({
-            name: _name,
-            email: _email,
-            profileImageHash: _profileImageHash,
-            isRegistered: true
-        });
-
-        emit UserRegistered(msg.sender, _name);
+    
+    modifier landExists(uint256 _landId) {
+        require(lands[_landId].owner != address(0), "Land does not exist");
+        _;
     }
-
-    function updateProfile(
-        string memory _profileImageHash
-    ) public onlyRegistered {
-        users[msg.sender].profileImageHash = _profileImageHash;
-        emit ProfileUpdated(msg.sender, _profileImageHash);
-    }
-
+    
+    // Register a new land
     function registerLand(
+        string memory _title,
         string memory _location,
         string memory _description,
-        string memory _imageHash,
         uint256 _price,
         bool _forSale
-    ) public onlyRegistered {
-        landCounter++;
-
-        lands[landCounter] = Land({
-            id: landCounter,
+    ) external returns (uint256) {
+        landIdCounter++;
+        uint256 newLandId = landIdCounter;
+        
+        lands[newLandId] = Land({
+            id: newLandId,
             owner: msg.sender,
-            price: _price,
+            title: _title,
             location: _location,
             description: _description,
-            imageHash: _imageHash,
-            forSale: _forSale
+            price: _price,
+            forSale: _forSale,
+            registrationDate: block.timestamp
         });
-
-        userLands[msg.sender].push(landCounter);
-        emit LandRegistered(landCounter, msg.sender);
-
-        if (_forSale) {
-            emit LandOffered(landCounter, _price);
-        }
+        
+        landsByOwner[msg.sender].push(newLandId);
+        
+        emit LandRegistered(newLandId, msg.sender, block.timestamp);
+        
+        return newLandId;
     }
-
-    function offerLandForSale(
-        uint256 _landId,
-        uint256 _price
-    ) public onlyRegistered onlyLandOwner(_landId) {
+    
+    // Buy land
+    function buyLand(uint256 _landId) external payable landExists(_landId) {
         Land storage land = lands[_landId];
-        land.forSale = true;
-        land.price = _price;
-
-        emit LandOffered(_landId, _price);
-    }
-
-    function buyLand(uint256 _landId) public payable onlyRegistered {
-        Land storage land = lands[_landId];
-
-        require(land.forSale, "Land not for sale");
-        require(msg.value >= land.price, "Insufficient funds");
-        require(land.owner != msg.sender, "Already owner");
-
+        
+        require(land.forSale, "Land is not for sale");
+        require(land.owner != msg.sender, "Owner cannot buy their own land");
+        require(msg.value == land.price, "Incorrect payment amount");
+        
         address previousOwner = land.owner;
-
-        // Remove land from previous owner's list
-        removeFromUserLands(previousOwner, _landId);
-
-        // Transfer ownership
+        
+        // Update land ownership
         land.owner = msg.sender;
         land.forSale = false;
-        userLands[msg.sender].push(_landId);
-
-        // Transfer funds
+        
+        // Add land to buyer's owned lands
+        landsByOwner[msg.sender].push(_landId);
+        
+        // Remove land from seller's owned lands
+        removeFromOwnedLands(previousOwner, _landId);
+        
+        // Record transaction
+        transactions.push(Transaction({
+            landId: _landId,
+            seller: previousOwner,
+            buyer: msg.sender,
+            price: land.price,
+            transactionDate: block.timestamp
+        }));
+        
+        // Transfer payment to the seller
         payable(previousOwner).transfer(msg.value);
-
-        emit LandSold(_landId, previousOwner, msg.sender, land.price);
+        
+        emit LandTransferred(_landId, previousOwner, msg.sender, land.price, block.timestamp);
     }
-
-    function removeFromUserLands(address _user, uint256 _landId) internal {
-        uint256[] storage lands = userLands[_user];
-        for (uint i = 0; i < lands.length; i++) {
-            if (lands[i] == _landId) {
-                if (i < lands.length - 1) {
-                    lands[i] = lands[lands.length - 1];
-                }
-                lands.pop();
-                break;
-            }
-        }
-    }
-
-    function getUserLands(
-        address _user
-    ) public view returns (uint256[] memory) {
-        return userLands[_user];
-    }
-
-    function getLandDetails(
-        uint256 _landId
-    )
-        public
-        view
-        returns (
-            uint256 id,
-            address owner,
-            uint256 price,
-            string memory location,
-            string memory description,
-            string memory imageHash,
-            bool forSale
-        )
-    {
-        Land storage land = lands[_landId];
-        return (
-            land.id,
-            land.owner,
-            land.price,
-            land.location,
-            land.description,
-            land.imageHash,
-            land.forSale
-        );
-    }
-
-    function getAllLandsForSale() public view returns (uint256[] memory) {
-        uint256[] memory forSaleLands = new uint256[](landCounter);
-        uint256 count = 0;
-
-        for (uint i = 1; i <= landCounter; i++) {
-            if (lands[i].forSale) {
-                forSaleLands[count] = i;
-                count++;
-            }
-        }
-
-        // Resize array to actual count
-        assembly {
-            mstore(forSaleLands, count)
-        }
-
-        return forSaleLands;
-    }
-}
+    
+    // Toggle land for sale status
+    function toggleForSale(uint256 _landId, bool _forSale) external{}

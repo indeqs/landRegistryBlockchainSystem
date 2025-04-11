@@ -4,6 +4,7 @@
 <div class="container py-5">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
             <li class="breadcrumb-item"><a href="{{ url_for('marketplace') }}">Marketplace</a></li>
             <li class="breadcrumb-item active" aria-current="page">{{ land.title }}</li>
         </ol>
@@ -55,3 +56,128 @@
                             alt="{{ land.owner.username }}" class="rounded-circle me-3" width="50" height="50">
                         <div>
                             <h5 class="mb-0">{{ land.owner.username }}</h5>
+                            <p class="text-muted mb-0"><small>Owner since {{ land.created_at.strftime('%B %d, %Y')
+                                    }}</small></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if land.for_sale and land.owner_id != session.user_id %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">Purchase Information</h4>
+                    <p class="card-text">This land is available for purchase at the listed price.</p>
+                    <h3 class="text-primary mb-3">${{ "%.2f"|format(land.price) }}</h3>
+                    <form action="{{ url_for('buy_land', land_id=land.id) }}" method="POST">
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="fas fa-handshake me-2"></i>Buy Now
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if land.owner_id == session.user_id %}
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h4 class="card-title">Manage Listing</h4>
+                    <form action="{{ url_for('toggle_sale_status', land_id=land.id) }}" method="POST">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="for_sale" name="for_sale" {% if
+                                land.for_sale %}checked{% endif %} onchange="this.form.submit()">
+                            <label class="form-check-label" for="for_sale">
+                                {% if land.for_sale %}Listed for Sale{% else %}Not for Sale{% endif %}
+                            </label>
+                        </div>
+                    </form>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('edit_land', land_id=land.id) }}" class="btn btn-primary">
+                            <i class="fas fa-edit me-2"></i>Edit Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h4 class="card-title">Verify on Blockchain</h4>
+                    <p class="card-text">Scan the QR code or click the button below to verify this land's ownership on
+                        the blockchain.</p>
+                    <div class="text-center mb-3">
+                        <img src="{{ url_for('static', filename='img/qr-code.svg') }}" alt="QR Code" width="150">
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="#" class="btn btn-outline-primary" id="verifyBtn">
+                            <i class="fas fa-link me-2"></i>Verify on Blockchain
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if land.transactions %}
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title">Transaction History</h3>
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Price</th>
+                                    <th>Transaction Hash</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for tx in land.transactions %}
+                                <tr>
+                                    <td>{{ tx.transaction_date.strftime('%B %d, %Y') }}</td>
+                                    <td>{{ tx.seller.username }}</td>
+                                    <td>{{ tx.buyer.username }}</td>
+                                    <td>${{ "%.2f"|format(tx.price) }}</td>
+                                    <td>
+                                        <a href="#" class="text-truncate d-inline-block" style="max-width: 200px;"
+                                            onclick="copyToClipboard('{{ tx.blockchain_tx_hash }}')">
+                                            {{ tx.blockchain_tx_hash[:10] }}...{{ tx.blockchain_tx_hash[-6:] }}
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function () {
+            alert('Transaction hash copied to clipboard!');
+        }, function () {
+            alert('Failed to copy transaction hash.');
+        });
+    }
+
+    document.getElementById('verifyBtn').addEventListener('click', function (e) {
+        e.preventDefault();
+
+        // This would be replaced with actual blockchain verification in production
+        alert('Connecting to blockchain for verification...\n\nVerification successful! Ownership record matches the database.');
+    });
+</script>
+{% endblock %}

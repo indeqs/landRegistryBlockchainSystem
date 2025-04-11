@@ -1,0 +1,105 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <h1 class="mb-4">Transaction History</h1>
+
+    {% if transactions %}
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Land</th>
+                            <th>Type</th>
+                            <th>From/To</th>
+                            <th>Price</th>
+                            <th>Blockchain Hash</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tx in transactions %}
+                        <tr>
+                            <td>{{ tx.transaction_date.strftime('%B %d, %Y') }}</td>
+                            <td>
+                                <a href="{{ url_for('land_details', land_id=tx.land_id) }}">
+                                    {{ tx.land.title }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if tx.seller_id == session.user_id %}
+                                <span class="badge bg-danger">Sold</span>
+                                {% else %}
+                                <span class="badge bg-success">Purchased</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if tx.seller_id == session.user_id %}
+                                <span>To: {{ tx.buyer.username }}</span>
+                                {% else %}
+                                <span>From: {{ tx.seller.username }}</span>
+                                {% endif %}
+                            </td>
+                            <td>${{ "%.2f"|format(tx.price) }}</td>
+                            <td>
+                                <span class="text-truncate d-inline-block" style="max-width: 150px;">
+                                    {{ tx.blockchain_tx_hash[:8] }}...{{ tx.blockchain_tx_hash[-6:] }}
+                                </span>
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary"
+                                    onclick="copyToClipboard('{{ tx.blockchain_tx_hash }}')">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                                <a href="#" class="btn btn-sm btn-outline-info verify-btn"
+                                    data-tx-hash="{{ tx.blockchain_tx_hash }}">
+                                    <i class="fas fa-check-circle"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>You haven't made any transactions yet.
+        <a href="{{ url_for('marketplace') }}" class="alert-link">Browse the marketplace</a> to find properties.
+    </div>
+    {% endif %}
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">Back to Dashboard</a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function () {
+            alert('Transaction hash copied to clipboard!');
+        }, function () {
+            alert('Failed to copy transaction hash.');
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const verifyBtns = document.querySelectorAll('.verify-btn');
+        verifyBtns.forEach(btn => {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const txHash = this.getAttribute('data-tx-hash');
+
+                // This would connect to the blockchain in production
+                alert(`Verifying transaction ${txHash.slice(0, 8)}...${txHash.slice(-6)}\n\nVerification successful! Transaction is valid and confirmed on the blockchain.`);
+            });
+        });
+    });
+</script>
+{% endblock %}

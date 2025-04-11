@@ -1,0 +1,70 @@
+{% extends 'layout.html' %}
+
+{% block content %}
+<div class="container py-5">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('marketplace') }}">Marketplace</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Search Results</li>
+        </ol>
+    </nav>
+
+    <h1 class="mb-4">Search Results{% if query %} for "{{ query }}"{% endif %}</h1>
+
+    <div class="mb-4">
+        <form action="{{ url_for('search_lands') }}" method="GET" class="row g-3">
+            <div class="col-md-10">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" class="form-control" id="query" name="query" value="{{ query }}"
+                        placeholder="Search by title, location or description...">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="d-grid">
+                    <button type="submit" class="btn btn-primary">Search</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    {% if lands %}
+    <div class="row row-cols-1 row-cols-md-3 g-4">
+        {% for land in lands %}
+        <div class="col">
+            <div class="card h-100 shadow-sm">
+                <div class="position-relative">
+                    <img src="{{ url_for('static', filename='uploads/' + land.image) }}" class="card-img-top"
+                        alt="{{ land.title }}">
+                    <span class="badge bg-success position-absolute top-0 end-0 m-2">For Sale</span>
+                </div>
+                <div class="card-body">
+                    <h5 class="card-title">{{ land.title }}</h5>
+                    <p class="card-text"><i class="fas fa-map-marker-alt me-2"></i>{{ land.location }}</p>
+                    <p class="card-text text-truncate">{{ land.description }}</p>
+                    <p class="card-text">
+                        <small class="text-muted">Owner: {{ land.owner.username }}</small>
+                    </p>
+                    <h5 class="card-text text-primary">${{ "%.2f"|format(land.price) }}</h5>
+                </div>
+                <div class="card-footer bg-transparent border-top-0">
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('land_details', land_id=land.id) }}" class="btn btn-outline-primary">View
+                            Details</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="fas fa-info-circle me-2"></i>No lands found matching your search criteria.
+    </div>
+    {% endif %}
+
+    <div class="text-center mt-4">
+        <a href="{{ url_for('marketplace') }}" class="btn btn-outline-primary">Back to Marketplace</a>
+    </div>
+</div>
+{% endblock %}

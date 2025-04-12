@@ -3,80 +3,177 @@
 {% block content %}
 <div class="container py-5">
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-body">
-                    <h1 class="text-center">Register New Land</h1>
+        <div class="col-lg-8 col-md-10">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Register Land</li>
+                </ol>
+            </nav>
 
-                    <form method="POST" action="{{ url_for('registerLand') }}" enctype="multipart/form-data">
+            <div class="card shadow-lg border-0 rounded-lg">
+                <div class="card-header bg-primary text-white text-center py-3">
+                    <h2 class="card-title mb-0"><i class="fas fa-landmark me-2"></i>Register New Land</h2>
+                </div>
+                <div class="card-body p-4">
+                    <div class="mb-4">
+                        <p class="text-muted">Complete the form below to register your land on the blockchain. All
+                            fields marked with * are required.</p>
+                    </div>
+
+                    <form method="POST" action="{{ url_for('registerLand') }}" enctype="multipart/form-data"
+                        class="needs-validation" novalidate>
                         <div class="row g-3">
-                            <div class="col-md-12">
-                                <label for="title" class="form-label">Land Title</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-file-signature"></i></span>
-                                    <input type="text" class="form-control" id="title" name="title" required>
+                            <div class="col-md-12 mb-3">
+                                <label for="title" class="form-label fw-bold">Land Title *</label>
+                                <div class="input-group has-validation">
+                                    <span class="input-group-text bg-light"><i
+                                            class="fas fa-file-signature text-primary"></i></span>
+                                    <input type="text" class="form-control" id="title" name="title"
+                                        placeholder="Enter property title" required>
+                                    <div class="invalid-feedback">
+                                        Please provide a title for your land.
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="col-md-12">
-                                <label for="location" class="form-label">Location</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
-                                    <input type="text" class="form-control" id="location" name="location" required>
+                            <div class="col-md-12 mb-3">
+                                <label for="location" class="form-label fw-bold">Location *</label>
+                                <div class="input-group has-validation">
+                                    <span class="input-group-text bg-light"><i
+                                            class="fas fa-map-marker-alt text-danger"></i></span>
+                                    <input type="text" class="form-control" id="location" name="location"
+                                        placeholder="123 Main St, City, Country" required>
+                                    <div class="invalid-feedback">
+                                        Please provide the location of your land.
+                                    </div>
                                 </div>
-                                <div class="form-text">Enter the full address of the land.</div>
+                                <div class="form-text small">Enter the complete address or coordinates of the property.
+                                </div>
                             </div>
 
-                            <div class="col-md-12">
-                                <label for="description" class="form-label">Description</label>
+                            <div class="col-md-12 mb-3">
+                                <label for="description" class="form-label fw-bold">Description *</label>
                                 <textarea class="form-control" id="description" name="description" rows="4"
+                                    placeholder="Describe your property including size, features, and other relevant details..."
                                     required></textarea>
-                                <div class="form-text">Provide details about the land, including size, features, etc.
+                                <div class="invalid-feedback">
+                                    Please provide a description of your land.
                                 </div>
+                                <div class="form-text small">A detailed description helps potential buyers understand
+                                    the value of your property.</div>
                             </div>
 
-                            <div class="col-md-6">
-                                <label for="price" class="form-label">Price (USD)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-dollar-sign"></i></span>
+                            <div class="col-md-6 mb-3">
+                                <label for="price" class="form-label fw-bold">Price (USD) *</label>
+                                <div class="input-group has-validation">
+                                    <span class="input-group-text bg-light"><i
+                                            class="fas fa-dollar-sign text-success"></i></span>
                                     <input type="number" class="form-control" id="price" name="price" step="0.01"
-                                        min="0" required>
+                                        min="0" placeholder="0.00" required>
+                                    <div class="invalid-feedback">
+                                        Please specify a valid price.
+                                    </div>
                                 </div>
+                                <div class="form-text small">Enter the price in USD. This will be converted to
+                                    cryptocurrency during transactions.</div>
                             </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label d-block">Listing Status</label>
-                                <div class="form-check form-switch">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold d-block">Listing Status</label>
+                                <div class="form-check form-switch mt-2">
                                     <input class="form-check-input" type="checkbox" id="for_sale" name="for_sale"
                                         checked>
-                                    <label class="form-check-label" for="for_sale">List for Sale</label>
+                                    <label class="form-check-label" for="for_sale">
+                                        <span class="text-success">List for Sale</span>
+                                    </label>
                                 </div>
+                                <div class="form-text small">Toggle off if you want to register the land but not list it
+                                    for sale immediately.</div>
                             </div>
 
-                            <div class="col-md-12">
-                                <label for="land_image" class="form-label">Land Image</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-image"></i></span>
+                            <div class="col-md-12 mb-4">
+                                <label for="land_image" class="form-label fw-bold">Land Image *</label>
+                                <div class="input-group has-validation">
+                                    <span class="input-group-text bg-light"><i
+                                            class="fas fa-image text-info"></i></span>
                                     <input type="file" class="form-control" id="land_image" name="land_image"
                                         accept="image/*" required>
+                                    <div class="invalid-feedback">
+                                        Please upload an image of your land.
+                                    </div>
                                 </div>
-                                <div class="form-text">Upload an image of the land (JPG, PNG or GIF).</div>
+                                <div class="form-text small">Upload a clear image of the property. Supported formats:
+                                    JPG, PNG, GIF. Max size: 16MB.</div>
                             </div>
 
-                            <div class="col-12 mt-4">
+                            <div class="col-12 mt-2">
                                 <div class="d-grid gap-2">
-                                    <button type="submit" class="btn btn-primary btn-lg">Register Land</button>
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-save me-2"></i>Register Land on Blockchain
+                                    </button>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-arrow-left me-2"></i>Return to Dashboard
+                                    </a>
                                 </div>
                             </div>
                         </div>
                     </form>
                 </div>
-            </div>
-
-            <div class="text-center mt-4">
-                <a href="{{ url_for('dashboard') }}" class="btn btn-outline-primary">Back to Dashboard</a>
+                <div class="card-footer bg-light p-3 text-center">
+                    <small class="text-muted">By registering your land, you're creating an immutable record on the
+                        blockchain that verifies your ownership.</small>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    // Enable Bootstrap form validation
+    (function () {
+        'use strict'
+
+        // Fetch all forms that need validation
+        var forms = document.querySelectorAll('.needs-validation')
+
+        // Loop over and prevent submission
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+
+    // Preview uploaded image
+    document.getElementById('land_image').addEventListener('change', function (e) {
+        if (document.getElementById('imagePreview')) {
+            document.getElementById('imagePreview').remove();
+        }
+
+        if (e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const preview = document.createElement('div');
+                preview.id = 'imagePreview';
+                preview.className = 'mt-3 text-center';
+                preview.innerHTML = `
+                <p class="text-muted mb-2">Image Preview:</p>
+                <img src="${e.target.result}" class="img-thumbnail" style="max-height: 200px">
+            `;
+
+                e.target.parentElement.parentElement.appendChild(preview);
+            }
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    });
+</script>
 {% endblock %}

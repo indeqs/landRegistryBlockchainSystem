@@ -208,7 +208,11 @@ def dashboard():
         flash("Please log in first", "warning")
         return redirect(url_for("login"))
 
-    user = User.query.get(session["user_id"])
+    user = User.query.filter_by(id=session["user_id"]).first()
+    if not user:
+        flash("User not found", "danger")
+        return redirect(url_for("logout"))
+
     user_lands = Land.query.filter_by(owner_id=user.id).all()
 
     return render_template("dashboard.html", user=user, lands=user_lands)

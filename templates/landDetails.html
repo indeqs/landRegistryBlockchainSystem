@@ -52,7 +52,7 @@
                 <div class="card-body">
                     <h4 class="card-title">Owner Information</h4>
                     <div class="d-flex align-items-center mb-3">
-                        <img src="{{ url_for('static', filename='uploads/' + land.owner.profile_image) }}"
+                        <img src="{{ url_for('static', filename='uploads/profiles/' + land.owner.profile_image) }}"
                             alt="{{ land.owner.username }}" class="rounded-circle" width="50" height="50">
                         <div>
                             <h5 class="mb-0">{{ land.owner.username }}</h5>
@@ -108,7 +108,7 @@
                     <p class="card-text">Scan the QR code or click the button below to verify this land's ownership on
                         the blockchain.</p>
                     <div class="text-center mb-3">
-                        <img src="{{ url_for('static', filename='img/qr-code.svg') }}" alt="QR Code" width="150">
+                        <img src="{{ url_for('land_qr', land_id=land.id) }}" alt="QR Code" width="150">
                     </div>
                     <div class="d-grid gap-2">
                         <a href="#" class="btn btn-outline-primary" id="verifyBtn">
@@ -145,7 +145,8 @@
                                     <td>{{ tx.buyer.username }}</td>
                                     <td>${{ "%.2f"|format(tx.price) }}</td>
                                     <td>
-                                        <a href="#" class="text-truncate" onclick="copyToClipboard('{{ tx.blockchain_tx_hash }}')">
+                                        <a href="#" class="text-truncate"
+                                            onclick="copyToClipboard('{{ tx.blockchain_tx_hash }}')">
                                             {{ tx.blockchain_tx_hash[:10] }}...{{ tx.blockchain_tx_hash[-6:] }}
                                         </a>
                                     </td>

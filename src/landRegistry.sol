@@ -1,24 +1,29 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.0;
 
+/// @title Land Registry Smart Contract
+/// @notice This contract allows users to register, buy, and manage lands on the blockchain.
+/// @dev Implements land ownership, transactions, and sale status management.
 contract landRegistry {
+    /// @notice Represents a land record.
     struct Land {
-        uint256 id;
-        address owner;
-        string title;
-        string location;
-        string description;
-        uint256 price;
-        bool forSale;
-        uint256 registrationDate;
+        uint256 id; // Unique ID of the land
+        address owner; // Address of the land owner
+        string title; // Title of the land
+        string location; // Location of the land
+        string description; // Description of the land
+        uint256 price; // Price of the land in wei
+        bool forSale; // Indicates if the land is for sale
+        uint256 registrationDate; // Timestamp of when the land was registered
     }
 
+    /// @notice Represents a transaction record.
     struct Transaction {
-        uint256 landId;
-        address seller;
-        address buyer;
-        uint256 price;
-        uint256 transactionDate;
+        uint256 landId; // ID of the land involved in the transaction
+        address seller; // Address of the seller
+        address buyer; // Address of the buyer
+        uint256 price; // Price of the land in wei
+        uint256 transactionDate; // Timestamp of the transaction
     }
 
     // Mapping from land ID to Land struct
@@ -71,7 +76,13 @@ contract landRegistry {
         _;
     }
 
-    // Register a new land
+    /// @notice Registers a new land.
+    /// @param _title The title of the land.
+    /// @param _location The location of the land.
+    /// @param _description A brief description of the land.
+    /// @param _price The price of the land in wei.
+    /// @param _forSale Indicates whether the land is for sale.
+    /// @return The ID of the newly registered land.
     function registerLand(
         string memory _title,
         string memory _location,
@@ -100,7 +111,9 @@ contract landRegistry {
         return newLandId;
     }
 
-    // Buy land
+    /// @notice Allows a user to buy a land that is for sale.
+    /// @param _landId The ID of the land to buy.
+    /// @dev The buyer must send the exact price of the land in wei.
     function buyLand(uint256 _landId) external payable landExists(_landId) {
         Land storage land = lands[_landId];
 
@@ -143,7 +156,9 @@ contract landRegistry {
         );
     }
 
-    // Toggle land for sale status
+    /// @notice Toggles the sale status of a land.
+    /// @param _landId The ID of the land.
+    /// @param _forSale The new sale status of the land.
     function toggleForSale(
         uint256 _landId,
         bool _forSale
@@ -152,7 +167,9 @@ contract landRegistry {
         emit LandStatusChanged(_landId, _forSale, block.timestamp);
     }
 
-    // Change the price of a land
+    /// @notice Changes the price of a land.
+    /// @param _landId The ID of the land.
+    /// @param _newPrice The new price of the land in wei.
     function changeLandPrice(
         uint256 _landId,
         uint256 _newPrice
@@ -162,7 +179,9 @@ contract landRegistry {
         emit LandPriceChanged(_landId, _newPrice, block.timestamp);
     }
 
-    // Helper function to remove land from owner's list
+    /// @notice Removes a land from the owner's list of owned lands.
+    /// @param _owner The address of the owner.
+    /// @param _landId The ID of the land to remove.
     function removeFromOwnedLands(address _owner, uint256 _landId) internal {
         uint256[] storage ownedLands = landsByOwner[_owner];
         for (uint256 i = 0; i < ownedLands.length; i++) {
@@ -174,14 +193,17 @@ contract landRegistry {
         }
     }
 
-    // Get all lands owned by a specific address
+    /// @notice Retrieves all lands owned by a specific address.
+    /// @param _owner The address of the owner.
+    /// @return An array of land IDs owned by the specified address.
     function getLandsByOwner(
         address _owner
     ) external view returns (uint256[] memory) {
         return landsByOwner[_owner];
     }
 
-    // Get the total number of transactions
+    /// @notice Retrieves the total number of transactions.
+    /// @return The total number of transactions recorded in the contract.
     function getTransactionCount() external view returns (uint256) {
         return transactions.length;
     }

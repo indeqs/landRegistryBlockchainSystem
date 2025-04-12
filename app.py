@@ -5,13 +5,15 @@ from flask import (
     redirect,
     url_for,
     flash,
+    send_file,
     session,
     jsonify,
 )
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-import os
+import os, io
+import qrcode
 from web3 import Web3
 import json
 from datetime import datetime
@@ -305,6 +307,38 @@ def landDetails(land_id):
 
     land = Land.query.get_or_404(land_id)
     return render_template("landDetails.html", land=land)
+
+
+@app.route("/land_qr/<int:land_id>")
+def land_qr(land_id):
+    """Generate QR code for land verification"""
+    if "user_id" not in session:
+        flash("Please log in first", "warning")
+        return redirect(url_for("login"))
+
+    land = Land.query.get_or_404(land_id)
+
+    # Create a QR code that links to your verification URL
+    verification_url = url_for("landDetails", land_id=land.id, _external=True)
+
+    # Generate QR code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(verification_url)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    # Save image to memory buffer
+    img_bytes = io.BytesIO()
+    img.save(img_bytes, format="PNG")
+    img_bytes.seek(0)
+
+    return send_file(img_bytes, mimetype="image/png")
 
 
 @app.route("/buy_land/<int:land_id>", methods=["POST"])

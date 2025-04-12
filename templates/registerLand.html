@@ -33,9 +33,9 @@
                                 <p class="mb-2">Registering land requires a blockchain transaction. Please make sure
                                     your wallet is connected.</p>
                                 <div class="d-flex align-items-center">
-                                    <span id="wallet-status-inline" class="badge bg-danger me-2">Not Connected</span>
-                                    <span id="wallet-address-inline" class="text-muted me-2">No wallet connected</span>
-                                    <button id="connect-wallet-btn-inline" class="btn btn-primary btn-sm">
+                                    <span id="wallet-status" class="badge bg-danger me-2">Not Connected</span>
+                                    <span id="wallet-address" class="text-muted me-2">No wallet connected</span>
+                                    <button id="connect-wallet-btn" class="btn btn-primary btn-sm">
                                         <i class="fas fa-plug me-1"></i> Connect Wallet
                                     </button>
                                 </div>
@@ -127,7 +127,8 @@
                                     <span class="input-group-text bg-light"><i
                                             class="fas fa-image text-info"></i></span>
                                     <input type="file" class="form-control" id="land_image" name="land_image"
-                                        accept="image/*" required>
+                                        accept="image/*" {% if not form_data or not form_data.image %}required{% endif
+                                        %}>
                                     <div class="invalid-feedback">
                                         Please upload an image of your land.
                                     </div>
@@ -141,6 +142,11 @@
                                 <p class="text-muted mb-2">Image Preview:</p>
                                 <img src="{{ url_for('static', filename='uploads/' + form_data.image) }}"
                                     class="img-thumbnail" style="max-height: 200px">
+                            </div>
+                            {% else %}
+                            <div id="imagePreview" class="col-md-12 mb-3 text-center" style="display: none;">
+                                <p class="text-muted mb-2">Image Preview:</p>
+                                <img src="" class="img-thumbnail" style="max-height: 200px">
                             </div>
                             {% endif %}
 
@@ -194,16 +200,20 @@
                         <i class="fas fa-check-circle fa-3x"></i>
                     </div>
                     <p class="text-center">Transaction completed successfully!</p>
+                    <p class="text-center" id="tx-hash-display"></p>
                 </div>
                 <div id="transaction-error" style="display: none;">
                     <div class="text-center text-danger mb-3">
                         <i class="fas fa-times-circle fa-3x"></i>
                     </div>
-                    <p class="text-center">An error occurred during the transaction. Please try again.</p>
+                    <p class="text-center">An error occurred during the transaction.</p>
+                    <p class="text-center text-danger" id="error-message"></p>
                 </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="complete-registration-btn" class="btn btn-primary"
+                    style="display: none;">Complete Registration</button>
             </div>
         </div>
     </div>
@@ -215,42 +225,84 @@
     document.addEventListener('DOMContentLoaded', function () {
         const registerButton = document.getElementById('register-blockchain-btn');
         const transactionModal = new bootstrap.Modal(document.getElementById('transactionModal'));
+        const completeRegistrationBtn = document.getElementById('complete-registration-btn');
+        const form = document.getElementById('registerLandForm');
+        const imageInput = document.getElementById('land_image');
+        const imagePreview = document.getElementById('imagePreview');
+        const previewImg = imagePreview.querySelector('img');
 
+        // Image preview functionality
+        imageInput.addEventListener('change', function () {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    previewImg.src = e.target.result;
+                    imagePreview.style.display = 'block';
+                }
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+
+        // Form validation
+        form.addEventListener('submit', function (event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        });
+
+        // Blockchain registration process
         registerButton.addEventListener('click', async function () {
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
             transactionModal.show();
             document.getElementById('transaction-pending').style.display = 'block';
             document.getElementById('transaction-success').style.display = 'none';
             document.getElementById('transaction-error').style.display = 'none';
+            completeRegistrationBtn.style.display = 'none';
 
             try {
                 const landData = {
                     title: document.getElementById('title').value,
                     location: document.getElementById('location').value,
                     description: document.getElementById('description').value,
-                    price: document.getElementById('price').value,
+                    price: parseFloat(document.getElementById('price').value),
                     forSale: document.getElementById('for_sale').checked
                 };
 
                 const result = await registerLandOnBlockchain(landData);
 
-                if (result.success) {
+                if (result && result.success) {
+                    // Extract the blockchain ID from the events
+                    const blockchainId = result.events && result.events.LandRegistered ?
+                        result.events.LandRegistered.returnValues.landId :
+                        Date.now(); // Fallback to timestamp if event not found
+
                     document.getElementById('blockchain_tx_hash').value = result.transactionHash;
-                    document.getElementById('blockchain_id').value = result.blockchainId;
+                    document.getElementById('blockchain_id').value = blockchainId;
 
                     document.getElementById('transaction-pending').style.display = 'none';
                     document.getElementById('transaction-success').style.display = 'block';
-
-                    setTimeout(() => {
-                        document.getElementById('registerLandForm').submit();
-                    }, 2000);
+                    document.getElementById('tx-hash-display').textContent = `Transaction Hash: ${result.transactionHash.substring(0, 10)}...`;
+                    completeRegistrationBtn.style.display = 'block';
                 } else {
-                    throw new Error(result.error);
+                    throw new Error(result.error || "Transaction failed");
                 }
             } catch (error) {
                 console.error('Error registering land:', error);
                 document.getElementById('transaction-pending').style.display = 'none';
                 document.getElementById('transaction-error').style.display = 'block';
+                document.getElementById('error-message').textContent = error.message || "Unknown error occurred";
             }
+        });
+
+        // Complete registration after successful blockchain transaction
+        completeRegistrationBtn.addEventListener('click', function () {
+            form.submit();
         });
     });
 </script>

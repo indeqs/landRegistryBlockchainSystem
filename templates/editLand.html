@@ -20,11 +20,37 @@
                 <div class="card-body p-4">
                     <div class="mb-4">
                         <p class="text-muted">Update your land's information below. All fields marked with * are
-                            required.</p>
+                            required. <strong>Changes will be recorded on the blockchain and require a wallet
+                                transaction.</strong></p>
                     </div>
 
-                    <form method="POST" action="{{ url_for('editLand', land_id=land.id) }}"
+                    <!-- Wallet Connection Status -->
+                    <div class="alert alert-info mb-4">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="fas fa-wallet fa-2x"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-1">Blockchain Wallet</h5>
+                                <p class="mb-2">Updating land details requires a blockchain transaction. Please make
+                                    sure
+                                    your wallet is connected.</p>
+                                <div class="d-flex align-items-center">
+                                    <span id="wallet-status" class="badge bg-danger me-2">Not Connected</span>
+                                    <span id="wallet-address" class="text-muted me-2">No wallet connected</span>
+                                    <button id="connect-wallet-btn" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-plug me-1"></i> Connect Wallet
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="editLandForm" method="POST" action="{{ url_for('editLand', land_id=land.id) }}"
                         enctype="multipart/form-data" class="needs-validation" novalidate>
+                        <!-- Hidden field for blockchain transaction hash -->
+                        <input type="hidden" id="blockchain_tx_hash" name="blockchain_tx_hash">
+
                         <div class="row g-3">
                             <div class="col-md-12 mb-3">
                                 <label for="title" class="form-label fw-bold">Land Title *</label>
@@ -111,8 +137,9 @@
 
                             <div class="col-12 mt-2">
                                 <div class="d-grid gap-2">
-                                    <button type="submit" class="btn btn-primary btn-lg">
-                                        <i class="fas fa-save me-2"></i>Update Land Details
+                                    <button type="button" id="update-blockchain-btn"
+                                        class="btn btn-primary btn-lg requires-wallet" disabled>
+                                        <i class="fas fa-save me-2"></i>Update Land Details on Blockchain
                                     </button>
                                 </div>
                                 <div class="text-center mt-3">
@@ -129,6 +156,49 @@
                     <small class="text-muted">Changes to your land details will be recorded on the blockchain, ensuring
                         transparent and immutable record keeping.</small>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction processing modal -->
+<div class="modal fade" id="transactionModal" tabindex="-1" aria-labelledby="transactionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="transactionModalLabel">Processing Blockchain Transaction</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="transaction-pending">
+                    <div class="d-flex justify-content-center mb-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <p class="text-center">Please approve the transaction in your wallet...</p>
+                    <p class="text-center small text-muted">This will update your land details on the blockchain.</p>
+                </div>
+                <div id="transaction-success" style="display: none;">
+                    <div class="text-center text-success mb-3">
+                        <i class="fas fa-check-circle fa-3x"></i>
+                    </div>
+                    <p class="text-center">Transaction completed successfully!</p>
+                    <p class="text-center" id="tx-hash-display"></p>
+                </div>
+                <div id="transaction-error" style="display: none;">
+                    <div class="text-center text-danger mb-3">
+                        <i class="fas fa-times-circle fa-3x"></i>
+                    </div>
+                    <p class="text-center">An error occurred during the transaction.</p>
+                    <p class="text-center text-danger" id="error-message"></p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" id="complete-update-btn" class="btn btn-primary" style="display: none;">Complete
+                    Update</button>
             </div>
         </div>
     </div>
@@ -166,6 +236,62 @@
             }
             reader.readAsDataURL(e.target.files[0]);
         }
+    });
+
+    // Blockchain update process
+    document.addEventListener('DOMContentLoaded', function () {
+        const updateButton = document.getElementById('update-blockchain-btn');
+        const transactionModal = new bootstrap.Modal(document.getElementById('transactionModal'));
+        const completeUpdateBtn = document.getElementById('complete-update-btn');
+        const form = document.getElementById('editLandForm');
+
+        updateButton.addEventListener('click', async function () {
+            if (!form.checkValidity()) {
+                form.classList.add('was-validated');
+                return;
+            }
+
+            transactionModal.show();
+            document.getElementById('transaction-pending').style.display = 'block';
+            document.getElementById('transaction-success').style.display = 'none';
+            document.getElementById('transaction-error').style.display = 'none';
+            completeUpdateBtn.style.display = 'none';
+
+            try {
+                const landData = {
+                    blockchainId: {{ land.blockchain_id }
+            },
+            title: document.getElementById('title').value,
+                location: document.getElementById('location').value,
+                    description: document.getElementById('description').value,
+                        price: parseFloat(document.getElementById('price').value),
+                            forSale: document.getElementById('for_sale').checked
+        };
+
+        const result = await updateLandOnBlockchain({{ land.id }}, landData);
+
+    if (result && result.success) {
+        document.getElementById('blockchain_tx_hash').value = result.transactionHash;
+
+        document.getElementById('transaction-pending').style.display = 'none';
+        document.getElementById('transaction-success').style.display = 'block';
+        document.getElementById('tx-hash-display').textContent = `Transaction Hash: ${result.transactionHash.substring(0, 10)}...`;
+        completeUpdateBtn.style.display = 'block';
+    } else {
+        throw new Error(result.error || "Transaction failed");
+    }
+            } catch (error) {
+        console.error('Error updating land on blockchain:', error);
+        document.getElementById('transaction-pending').style.display = 'none';
+        document.getElementById('transaction-error').style.display = 'block';
+        document.getElementById('error-message').textContent = error.message || "Unknown error occurred";
+    }
+        });
+
+    // Complete form submission after successful blockchain transaction
+    completeUpdateBtn.addEventListener('click', function () {
+        form.submit();
+    });
     });
 </script>
 {% endblock %}

@@ -10,6 +10,7 @@ from flask import (
     jsonify,
 )
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import os, io
@@ -55,7 +56,7 @@ ALCHEMY_URL = getenv("RPC_URL")  # Get RPC URL from environment variables
 w3 = Web3(Web3.HTTPProvider(ALCHEMY_URL))
 
 # Load smart contract ABI and address
-with open("src/contract_abi.json", "r") as f:
+with open("contracts/landRegistry_abi.json", "r") as f:
     contract_abi = json.load(f)
 
 contract_address = "0x322D4Ab5baC728982Fb228CC37f527b599817836"
@@ -348,37 +349,38 @@ def profile():
 
     return render_template("profile.html", user=user)
 
-@app.route('/update_wallet_address', methods=['POST'])
+
+@app.route("/update_wallet_address", methods=["POST"])
 def update_wallet_address():
     """
     Update user's blockchain wallet address.
-    
+
     Used when a user connects their MetaMask wallet.
-    
+
     Requires authentication.
     """
-    if 'user_id' not in session:
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
-    
+    if "user_id" not in session:
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
     try:
         data = request.json
-        address = data.get('address')
-        
-        if not address or not address.startswith('0x') or len(address) != 42:
-            return jsonify({'success': False, 'error': 'Invalid wallet address'}), 400
-        
-        user = User.query.get(session['user_id'])
+        address = data.get("address")
+
+        if not address or not address.startswith("0x") or len(address) != 42:
+            return jsonify({"success": False, "error": "Invalid wallet address"}), 400
+
+        user = db.session.get(User, session["user_id"])
         if not user:
-            return jsonify({'success': False, 'error': 'User not found'}), 404
-        
+            return jsonify({"success": False, "error": "User not found"}), 404
+
         user.blockchain_address = address
         db.session.commit()
-        
-        return jsonify({'success': True})
+
+        return jsonify({"success": True})
     except Exception as e:
         db.session.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
-    
+        return jsonify({"success": False, "error": str(e)}), 500
+
 
 @app.route("/registerLand", methods=["GET", "POST"])
 def registerLand():
@@ -402,7 +404,7 @@ def registerLand():
         for_sale = "for_sale" in request.form
         blockchain_tx_hash = request.form.get("blockchain_tx_hash")
         blockchain_id = request.form.get("blockchain_id")
-        
+
         # Save land image
         land_image = "default_land.png"
         if "land_image" in request.files:
@@ -432,23 +434,27 @@ def registerLand():
 
                 flash("Land registered successfully on the blockchain!", "success")
                 return redirect(url_for("dashboard"))
-            except Exception as e:
+            except IntegrityError as e:
                 db.session.rollback()
-                flash(f"An error occurred: {str(e)}", "danger")
-                return redirect(url_for("registerLand"))
+                if "UNIQUE constraint failed: land.blockchain_id" in str(e):
+                    raise ValueError("Blockchain ID already exists in the database.")
+                # flash(f"An error occurred: {str(e)}", "danger")
+                # return redirect(url_for("registerLand"))
+                else:
+                    raise
         else:
             # This is the initial form submission without blockchain confirmation
             # Just render the template with the form data for the frontend to handle the transaction
             return render_template(
-                "registerLand.html", 
+                "registerLand.html",
                 form_data={
-                    'title': title,
-                    'location': location,
-                    'description': description,
-                    'price': price,
-                    'for_sale': for_sale,
-                    'image': land_image if land_image != "default_land.png" else None
-                }
+                    "title": title,
+                    "location": location,
+                    "description": description,
+                    "price": price,
+                    "for_sale": for_sale,
+                    "image": land_image if land_image != "default_land.png" else None,
+                },
             )
 
     return render_template("registerLand.html")
@@ -557,7 +563,7 @@ def buyLand(land_id):
 
     # Get blockchain transaction hash from form
     blockchain_tx_hash = request.form.get("blockchain_tx_hash")
-    
+
     if blockchain_tx_hash:
         try:
             # Record the transaction
@@ -676,7 +682,7 @@ def editLand(land_id):
 
     if request.method == "POST":
         blockchain_tx_hash = request.form.get("blockchain_tx_hash")
-        
+
         # Only update if we have blockchain confirmation
         if blockchain_tx_hash:
             try:
@@ -703,11 +709,7 @@ def editLand(land_id):
                 flash(f"An error occurred: {str(e)}", "danger")
         else:
             # Form submission without blockchain transaction - return the form with values
-            return render_template(
-                "editLand.html", 
-                land=land,
-                form_submission=True
-            )
+            return render_template("editLand.html", land=land, form_submission=True)
 
     return render_template("editLand.html", land=land)
 

@@ -204,6 +204,9 @@
     </div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
     // Enable Bootstrap form validation
     (function () {
@@ -259,39 +262,38 @@
 
             try {
                 const landData = {
-                    blockchainId: {{ land.blockchain_id }
-            },
-            title: document.getElementById('title').value,
-                location: document.getElementById('location').value,
+                    blockchainId: "{{ land.blockchain_id }}",
+                    title: document.getElementById('title').value,
+                    location: document.getElementById('location').value,
                     description: document.getElementById('description').value,
-                        price: parseFloat(document.getElementById('price').value),
-                            forSale: document.getElementById('for_sale').checked
-        };
+                    price: parseFloat(document.getElementById('price').value),
+                    forSale: document.getElementById('for_sale').checked
+                };
 
-        const result = await updateLandOnBlockchain({{ land.id }}, landData);
+                const result = await updateLandOnBlockchain("{{ land.id }}", landData);
 
-    if (result && result.success) {
-        document.getElementById('blockchain_tx_hash').value = result.transactionHash;
+                if (result && result.success) {
+                    document.getElementById('blockchain_tx_hash').value = result.transactionHash;
 
-        document.getElementById('transaction-pending').style.display = 'none';
-        document.getElementById('transaction-success').style.display = 'block';
-        document.getElementById('tx-hash-display').textContent = `Transaction Hash: ${result.transactionHash.substring(0, 10)}...`;
-        completeUpdateBtn.style.display = 'block';
-    } else {
-        throw new Error(result.error || "Transaction failed");
-    }
+                    document.getElementById('transaction-pending').style.display = 'none';
+                    document.getElementById('transaction-success').style.display = 'block';
+                    document.getElementById('tx-hash-display').textContent = `Transaction Hash: ${result.transactionHash.substring(0, 10)}...`;
+                    completeUpdateBtn.style.display = 'block';
+                } else {
+                    throw new Error(result.error || "Transaction failed");
+                }
             } catch (error) {
-        console.error('Error updating land on blockchain:', error);
-        document.getElementById('transaction-pending').style.display = 'none';
-        document.getElementById('transaction-error').style.display = 'block';
-        document.getElementById('error-message').textContent = error.message || "Unknown error occurred";
-    }
+                console.error('Error updating land on blockchain:', error);
+                document.getElementById('transaction-pending').style.display = 'none';
+                document.getElementById('transaction-error').style.display = 'block';
+                document.getElementById('error-message').textContent = error.message || "Unknown error occurred";
+            }
         });
 
-    // Complete form submission after successful blockchain transaction
-    completeUpdateBtn.addEventListener('click', function () {
-        form.submit();
-    });
+        // Complete form submission after successful blockchain transaction
+        completeUpdateBtn.addEventListener('click', function () {
+            form.submit();
+        });
     });
 </script>
 {% endblock %}

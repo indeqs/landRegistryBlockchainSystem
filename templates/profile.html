@@ -4,59 +4,97 @@
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-md-8">
-            <div class="card shadow">
-                <div class="card-body">
-                    <h1 class="text-center">Your Profile</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item active">Profile</li>
+                </ol>
+            </nav>
 
-                    <div class="text-center">
-                        <img src="{{ url_for('static', filename='uploads/profiles/' + user.profile_image) }}"
-                            alt="Profile Picture" class="rounded-circle">
-                    </div>
+            <div class="card shadow-sm rounded">
+                <div class="card-body p-4">
+                    <h2 class="text-center mb-4">Your Profile</h2>
 
-                    <div class="row">
-                        <div class="col-md-6">
-                            <h5>Username</h5>
-                            <p>{{ user.username }}</p>
-                        </div>
-                        <div class="col-md-6">
-                            <h5>Email</h5>
-                            <p>{{ user.email }}</p>
-                        </div>
-                    </div>
-
-                    <div>
-                        <h5>Blockchain Address</h5>
-                        <div class="input-group">
-                            <input type="text" value="{{ user.blockchain_address }}" readonly>
-                            <button type="button" onclick="copyToClipboard('{{ user.blockchain_address }}')">
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <hr>
-
-                    <h3>Update Profile Image</h3>
-                    <form method="POST" action="{{ url_for('profile') }}" enctype="multipart/form-data">
-                        <div>
-                            <label for="profile_image">New Profile Image</label>
-                            <div class="input-group">
-                                <span class="input-group-text"><i class="fas fa-image"></i></span>
-                                <input type="file" id="profile_image" name="profile_image" accept="image/*" required>
+                    <div class="text-center mb-4 position-relative">
+                        <div class="profile-upload-container">
+                            <img src="{{ url_for('static', filename='uploads/profiles/' + user.profile_image) }}"
+                                alt="Profile Picture" class="profile-img-lg mb-2" id="profile-preview">
+                            <div class="profile-upload-overlay">
+                                <i class="fas fa-camera"></i>
+                                <span>Update</span>
                             </div>
-                            <div>Upload a new profile picture (JPG, PNG or GIF).</div>
                         </div>
+                        <form id="profile-image-form" method="POST" action="{{ url_for('profile') }}"
+                            enctype="multipart/form-data" class="d-none">
+                            <input type="file" id="profile_image" name="profile_image" accept=".jpg,.jpeg,.png"
+                                onchange="submitProfileForm()">
+                        </form>
+                    </div>
 
-                        <div>
-                            <button type="submit">Update Profile Image</button>
+                    <div class="row mb-4">
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title text-muted mb-1">Username</h5>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control bg-light" value="{{ user.username }}"
+                                            id="username-field" readonly>
+                                        <button class="btn btn-outline-secondary copy-btn" type="button"
+                                            data-copy-target="username-field" data-field-name="Username">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                    </form>
+                        <div class="col-md-6 mb-3">
+                            <div class="card h-100">
+                                <div class="card-body">
+                                    <h5 class="card-title text-muted mb-1">Email</h5>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control bg-light" value="{{ user.email }}"
+                                            id="email-field" readonly>
+                                        <button class="btn btn-outline-secondary copy-btn" type="button"
+                                            data-copy-target="email-field" data-field-name="Email">
+                                            <i class="fas fa-copy"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h5 class="card-title text-muted mb-1">Blockchain Address</h5>
+                            <div class="input-group">
+                                <input type="text" class="form-control bg-light text-truncate"
+                                    value="{{ user.blockchain_address }}" id="address-field" readonly>
+                                <button class="btn btn-outline-secondary copy-btn" type="button"
+                                    data-copy-target="address-field" data-field-name="Blockchain Address">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-center">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-primary px-4 py-2">
+                            <i class="fas fa-tachometer-alt me-2"></i>Back to Dashboard
+                        </a>
+                    </div>
                 </div>
             </div>
+        </div>
+    </div>
+</div>
 
-            <div class="text-center">
-                <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
-            </div>
+<!-- Toast notification for copy action -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11">
+    <div id="copy-notification" class="copy-notification">
+        <div class="copy-notification-content">
+            <i class="fas fa-check-circle me-2"></i>
+            <span id="copy-message">Copied to clipboard!</span>
         </div>
     </div>
 </div>
@@ -64,12 +102,39 @@
 
 {% block scripts %}
 <script>
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(function () {
-            alert('Address copied to clipboard!');
-        }, function () {
-            alert('Failed to copy address.');
-        });
+    // Profile image upload functionality
+    document.querySelector('.profile-upload-container').addEventListener('click', function () {
+        document.getElementById('profile_image').click();
+    });
+
+    function submitProfileForm() {
+        document.getElementById('profile-image-form').submit();
     }
+
+    // Improved copy to clipboard functionality with custom notification
+    document.querySelectorAll('.copy-btn').forEach(button => {
+        button.addEventListener('click', function () {
+            const targetId = this.getAttribute('data-copy-target');
+            const fieldName = this.getAttribute('data-field-name');
+            const textToCopy = document.getElementById(targetId).value;
+
+            navigator.clipboard.writeText(textToCopy).then(function () {
+                // Show custom notification
+                const notification = document.getElementById('copy-notification');
+                document.getElementById('copy-message').textContent = `${fieldName} copied to clipboard!`;
+
+                // Add active class to show notification
+                notification.classList.add('active');
+
+                // Hide notification after 2 seconds
+                setTimeout(function () {
+                    notification.classList.remove('active');
+                }, 2000);
+            }).catch(function () {
+                console.error('Failed to copy text');
+            });
+        });
+    });
 </script>
+
 {% endblock %}

@@ -402,8 +402,8 @@ def toggle_sale_status(land_id):
     return redirect(url_for("landDetails", land_id=land_id))
 
 
-@app.route("/edit_land/<int:land_id>", methods=["GET", "POST"])
-def edit_land(land_id):
+@app.route("/editLand/<int:land_id>", methods=["GET", "POST"])
+def editLand(land_id):
     if "user_id" not in session:
         flash("Please log in first", "warning")
         return redirect(url_for("login"))
@@ -439,7 +439,7 @@ def edit_land(land_id):
             db.session.rollback()
             flash(f"An error occurred: {str(e)}", "danger")
 
-    return render_template("edit_land.html", land=land)
+    return render_template("editLand.html", land=land)
 
 
 @app.route("/api/verify_transaction/<transaction_hash>")

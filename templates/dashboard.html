@@ -9,7 +9,6 @@
                 aria-expanded="false">
                 <img src="{{ url_for('static', filename='uploads/profiles/' + user.profile_image) }}"
                     alt="Profile Picture" class="profile-img rounded-circle me-2">
-                <!-- Removed the manually added <i class="fas fa-caret-down"></i> -->
             </button>
             <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
                 <li><a class="dropdown-item" href="{{ url_for('profile') }}"><i class="fas fa-user me-2"></i>Edit
@@ -30,28 +29,56 @@
             <div class="card shadow-sm">
                 <div class="card-body">
                     <h5 class="card-title">Your Blockchain Wallet</h5>
-                    {% if user.blockchain_address %}
-                    <div class="input-group mb-3">
-                        <input type="text" class="form-control" value="{{ user.blockchain_address }}" id="walletAddress"
-                            readonly>
-                        <button class="btn btn-outline-secondary" type="button"
-                            onclick="copyToClipboard('{{ user.blockchain_address }}')">
-                            <i class="fas fa-copy"></i>
-                        </button>
+                    <div id="wallet-status-container">
+                        <!-- Wallet status will be updated dynamically -->
+                        <div class="wallet-not-connected">
+                            <p class="card-text text-muted mb-3">Connect your external wallet (like MetaMask) to
+                                register land and make transactions on the blockchain.</p>
+                            <div class="d-grid">
+                                <button id="connectWalletBtn" class="btn btn-primary">
+                                    <i class="fas fa-wallet me-2"></i>Connect Wallet
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="wallet-connected d-none">
+                            <div class="mb-2">
+                                <span class="badge bg-success me-2"><i class="fas fa-check-circle me-1"></i>Wallet
+                                    Connected</span>
+                            </div>
+                            <div class="input-group mb-3">
+                                <input type="text" class="form-control" id="walletAddress" readonly>
+                                <button class="btn btn-outline-secondary" type="button" id="copyAddressBtn">
+                                    <i class="fas fa-copy"></i>
+                                </button>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <!-- <small class="text-muted">Network: <span id="networkName">-</span></small> -->
+                                <button class="btn btn-sm btn-outline-danger"
+                                    id="disconnectWalletBtn">Disconnect</button>
+                            </div>
+                        </div>
+
+                        <div class="wallet-error d-none">
+                            <div class="alert alert-warning mb-3">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <span id="wallet-error-message">No wallet detected. Please install MetaMask or another
+                                    Web3 provider.</span>
+                            </div>
+                            <div class="d-grid">
+                                <a href="https://metamask.io/" target="_blank" class="btn btn-outline-primary">
+                                    <i class="fas fa-download me-2"></i>Get MetaMask
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                    <div class="d-flex align-items-center">
-                        <span class="badge bg-success me-2"><i class="fas fa-check-circle me-1"></i>Connected</span>
-                        <button class="btn btn-sm btn-outline-danger" id="disconnectWallet">Disconnect</button>
+
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Your blockchain wallet is used for secure land ownership verification.
+                        </small>
                     </div>
-                    {% else %}
-                    <p class="card-text text-muted mb-3">Connect your wallet to register land and make transactions on
-                        the blockchain.</p>
-                    <div class="d-grid">
-                        <button id="connectWalletBtn" class="btn btn-primary">
-                            <i class="fas fa-wallet me-2"></i>Connect Wallet
-                        </button>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -114,124 +141,269 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/web3@1.8.2/dist/web3.min.js"></script>
 <script>
-    // Copy wallet address to clipboard
-    function copyToClipboard(text) {
-        navigator.clipboard.writeText(text).then(function () {
-            alert('Address copied to clipboard!');
-        }, function () {
-            alert('Failed to copy address.');
-        });
-    }
-
-    // Web3 wallet connection
     document.addEventListener('DOMContentLoaded', function () {
+        // DOM elements for wallet section
         const connectWalletBtn = document.getElementById('connectWalletBtn');
-        const disconnectWallet = document.getElementById('disconnectWallet');
+        const disconnectWalletBtn = document.getElementById('disconnectWalletBtn');
+        const copyAddressBtn = document.getElementById('copyAddressBtn');
+        const walletAddress = document.getElementById('walletAddress');
+        // const networkName = document.getElementById('networkName');
 
+        // State elements
+        const notConnectedEl = document.querySelector('.wallet-not-connected');
+        const connectedEl = document.querySelector('.wallet-connected');
+        const errorEl = document.querySelector('.wallet-error');
+        const errorMessageEl = document.getElementById('wallet-error-message');
+
+        // Network ID to name mapping
+        // const networks = {
+        //     '1': 'Ethereum Mainnet',
+        //     '3': 'Ropsten Testnet',
+        //     '4': 'Rinkeby Testnet',
+        //     '5': 'Goerli Testnet',
+        //     '42': 'Kovan Testnet',
+        //     '56': 'Binance Smart Chain',
+        //     '137': 'Polygon Mainnet',
+        //     '80001': 'Mumbai Testnet',
+        //     '31337': 'Hardhat Local',
+        //     '1337': 'Ganache Local'
+        // };
+
+        // Check if Web3 provider exists
+        function checkIfWeb3Available() {
+            return Boolean(window.ethereum) || Boolean(window.web3);
+        }
+
+        // Update UI based on connection state
+        function updateUI(connectionState, data = {}) {
+            notConnectedEl.classList.add('d-none');
+            connectedEl.classList.add('d-none');
+            errorEl.classList.add('d-none');
+
+            switch (connectionState) {
+                case 'connected':
+                    connectedEl.classList.remove('d-none');
+                    if (data.address) walletAddress.value = data.address;
+                    // if (data.networkId) {
+                    //     networkName.textContent = networks[data.networkId] || `Chain ID: ${data.networkId}`;
+                    // }
+                    break;
+                case 'not_connected':
+                    notConnectedEl.classList.remove('d-none');
+                    break;
+                case 'error':
+                    errorEl.classList.remove('d-none');
+                    if (data.message) errorMessageEl.textContent = data.message;
+                    break;
+            }
+        }
+
+        // Connect wallet function
+        async function connectWallet() {
+            if (!checkIfWeb3Available()) {
+                updateUI('error', { message: 'No Web3 wallet detected. Please install MetaMask or another provider.' });
+                return;
+            }
+
+            try {
+                // Modern dapp browsers
+                if (window.ethereum) {
+                    try {
+                        // Request account access
+                        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+                        const account = accounts[0];
+
+                        // Initialize Web3
+                        window.web3 = new Web3(window.ethereum);
+
+                        // Get network ID
+                        const networkId = await window.ethereum.request({ method: 'net_version' });
+
+                        // Save connection state
+                        saveWalletConnection(account, networkId);
+
+                        // Update UI
+                        updateUI('connected', {
+                            address: account,
+                            networkId: networkId
+                        });
+
+                        return account;
+                    } catch (error) {
+                        console.error("User denied account access", error);
+                        updateUI('error', { message: 'Wallet connection was denied. Please try again.' });
+                    }
+                }
+                // Legacy dapp browsers
+                else if (window.web3) {
+                    window.web3 = new Web3(window.web3.currentProvider);
+                    const accounts = await web3.eth.getAccounts();
+                    const networkId = await web3.eth.net.getId();
+
+                    saveWalletConnection(accounts[0], networkId);
+                    updateUI('connected', {
+                        address: accounts[0],
+                        networkId: networkId
+                    });
+                }
+            } catch (error) {
+                console.error("Wallet connection error:", error);
+                updateUI('error', { message: 'Failed to connect wallet. Please try again.' });
+            }
+        }
+
+        // Save wallet connection
+        function saveWalletConnection(account, networkId) {
+            localStorage.setItem('connectedWallet', account);
+            localStorage.setItem('connectedNetwork', networkId);
+
+            // In a real application, you might want to sync this with your backend
+            // console.log(`Connected to wallet: ${account} on network: ${networkId}`);
+
+            // You could send this to your Flask backend with:
+            /*
+            fetch('/update_wallet', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    wallet_address: account,
+                    network_id: networkId
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Success:', data);
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+            });
+            */
+        }
+
+        // Disconnect wallet
+        function disconnectWallet() {
+            localStorage.removeItem('connectedWallet');
+            localStorage.removeItem('connectedNetwork');
+            updateUI('not_connected');
+        }
+
+        // Copy wallet address to clipboard
+        function copyAddressToClipboard() {
+            walletAddress.select();
+            document.execCommand('copy');
+
+            // Show temporary feedback
+            const originalText = copyAddressBtn.innerHTML;
+            copyAddressBtn.innerHTML = '<i class="fas fa-check"></i>';
+            setTimeout(() => {
+                copyAddressBtn.innerHTML = originalText;
+            }, 1500);
+        }
+
+        // Check for existing connection
+        function checkExistingConnection() {
+            const savedWallet = localStorage.getItem('connectedWallet');
+            const savedNetwork = localStorage.getItem('connectedNetwork');
+
+            if (savedWallet && checkIfWeb3Available()) {
+                // Verify the connection is still valid
+                if (window.ethereum) {
+                    window.ethereum.request({ method: 'eth_accounts' })
+                        .then(accounts => {
+                            if (accounts.length > 0 && accounts[0].toLowerCase() === savedWallet.toLowerCase()) {
+                                // Still connected
+                                window.web3 = new Web3(window.ethereum);
+                                updateUI('connected', {
+                                    address: savedWallet,
+                                    networkId: savedNetwork
+                                });
+
+                                // Setup event listeners for wallet/chain changes
+                                setupWalletEventListeners();
+                            } else {
+                                // No longer connected
+                                localStorage.removeItem('connectedWallet');
+                                localStorage.removeItem('connectedNetwork');
+                                updateUI('not_connected');
+                            }
+                        })
+                        .catch(err => {
+                            console.error("Error checking accounts", err);
+                            updateUI('not_connected');
+                        });
+                } else if (window.web3) {
+                    // Legacy check
+                    window.web3 = new Web3(window.web3.currentProvider);
+                    window.web3.eth.getAccounts()
+                        .then(accounts => {
+                            if (accounts.length > 0) {
+                                updateUI('connected', {
+                                    address: accounts[0],
+                                    networkId: savedNetwork
+                                });
+                            } else {
+                                updateUI('not_connected');
+                            }
+                        })
+                        .catch(() => {
+                            updateUI('not_connected');
+                        });
+                }
+            } else if (!checkIfWeb3Available()) {
+                updateUI('error', { message: 'No Web3 wallet detected. Please install MetaMask or another provider.' });
+            } else {
+                updateUI('not_connected');
+            }
+        }
+
+        // Setup event listeners for wallet changes
+        function setupWalletEventListeners() {
+            if (window.ethereum) {
+                // Listen for account changes
+                window.ethereum.on('accountsChanged', (accounts) => {
+                    if (accounts.length === 0) {
+                        // User disconnected their wallet
+                        disconnectWallet();
+                    } else {
+                        // Account changed, update UI
+                        saveWalletConnection(accounts[0], localStorage.getItem('connectedNetwork'));
+                        updateUI('connected', {
+                            address: accounts[0],
+                            networkId: localStorage.getItem('connectedNetwork')
+                        });
+                    }
+                });
+
+                // Listen for chain changes
+                window.ethereum.on('chainChanged', (chainId) => {
+                    // Chain ID from this event is in hex, convert to decimal
+                    const networkId = parseInt(chainId, 16).toString();
+                    saveWalletConnection(localStorage.getItem('connectedWallet'), networkId);
+                    updateUI('connected', {
+                        address: localStorage.getItem('connectedWallet'),
+                        networkId: networkId
+                    });
+                });
+            }
+        }
+
+        // Event listeners
         if (connectWalletBtn) {
             connectWalletBtn.addEventListener('click', connectWallet);
         }
 
-        if (disconnectWallet) {
-            disconnectWallet.addEventListener('click', disconnectFromWallet);
+        if (disconnectWalletBtn) {
+            disconnectWalletBtn.addEventListener('click', disconnectWallet);
         }
 
-        // Check if wallet is already connected on page load
-        checkWalletConnection();
+        if (copyAddressBtn) {
+            copyAddressBtn.addEventListener('click', copyAddressToClipboard);
+        }
+
+        // Initialize wallet status on page load
+        checkExistingConnection();
     });
-
-    async function connectWallet() {
-        if (window.ethereum) {
-            try {
-                // Request account access
-                const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
-                const account = accounts[0];
-
-                // Initialize Web3
-                window.web3 = new Web3(window.ethereum);
-
-                // Update UI to show connected state
-                updateWalletUI(account);
-
-                // Save the connection in session
-                saveWalletConnection(account);
-
-                return account;
-            } catch (error) {
-                console.error("User denied account access", error);
-                alert("Wallet connection was denied. Please try again.");
-            }
-        } else if (window.web3) {
-            // Legacy dapp browsers
-            window.web3 = new Web3(window.web3.currentProvider);
-            const accounts = await web3.eth.getAccounts();
-            updateWalletUI(accounts[0]);
-            saveWalletConnection(accounts[0]);
-        } else {
-            alert("No Ethereum browser extension detected. Please install MetaMask or similar extension.");
-        }
-    }
-
-    function disconnectFromWallet() {
-        // Clear the saved connection
-        localStorage.removeItem('connectedWallet');
-
-        // Reload the page to reset UI
-        location.reload();
-    }
-
-    function updateWalletUI(account) {
-        // This would update the UI to show connected state
-        // In a real implementation, you would reload the component or update DOM elements
-        const connectButton = document.getElementById('connectWalletBtn');
-        if (connectButton) {
-            connectButton.parentNode.innerHTML = `
-                <div class="input-group mb-3">
-                    <input type="text" class="form-control" value="${account}" id="walletAddress" readonly>
-                    <button class="btn btn-outline-secondary" type="button" onclick="copyToClipboard('${account}')">
-                        <i class="fas fa-copy"></i>
-                    </button>
-                </div>
-                <div class="d-flex align-items-center">
-                    <span class="badge bg-success me-2"><i class="fas fa-check-circle me-1"></i>Connected</span>
-                    <button class="btn btn-sm btn-outline-danger" id="disconnectWallet" onclick="disconnectFromWallet()">Disconnect</button>
-                </div>
-            `;
-        }
-    }
-
-    function saveWalletConnection(account) {
-        // Save connection info to localStorage or make an API call to update user's blockchain address
-        localStorage.setItem('connectedWallet', account);
-
-        // In a full implementation, you would make an API call to update the user's blockchain address
-        // For demonstration, just log it
-        console.log("Connected wallet:", account);
-    }
-
-    function checkWalletConnection() {
-        // Check if there's a saved connection
-        const savedWallet = localStorage.getItem('connectedWallet');
-        if (savedWallet) {
-            // If ethereum provider is available, verify the connection is still valid
-            if (window.ethereum) {
-                window.ethereum.request({ method: 'eth_accounts' })
-                    .then(accounts => {
-                        if (accounts.length > 0 && accounts[0].toLowerCase() === savedWallet.toLowerCase()) {
-                            // Still connected, update UI
-                            window.web3 = new Web3(window.ethereum);
-                            updateWalletUI(savedWallet);
-                        } else {
-                            // No longer connected
-                            localStorage.removeItem('connectedWallet');
-                        }
-                    })
-                    .catch(err => {
-                        console.error("Error checking accounts", err);
-                        localStorage.removeItem('connectedWallet');
-                    });
-            }
-        }
-    }
 </script>
 {% endblock %}

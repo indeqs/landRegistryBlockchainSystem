@@ -69,7 +69,7 @@
                     <h4 class="card-title">Purchase Information</h4>
                     <p class="card-text">This land is available for purchase at the listed price.</p>
                     <h3 class="text-primary mb-3">${{ "%.2f"|format(land.price) }}</h3>
-                    <form action="{{ url_for('buy_land', land_id=land.id) }}" method="POST">
+                    <form action="{{ url_for('buyLand', land_id=land.id) }}" method="POST">
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-success btn-lg">
                                 <i class="fas fa-handshake"></i>Buy Now
@@ -108,7 +108,7 @@
                     <p class="card-text">Scan the QR code or click the button below to verify this land's ownership on
                         the blockchain.</p>
                     <div class="text-center mb-3">
-                        <img src="{{ url_for('land_qr', land_id=land.id) }}" alt="QR Code" width="150">
+                        <img src="{{ url_for('landQR', land_id=land.id) }}" alt="QR Code" width="150">
                     </div>
                     <div class="d-grid gap-2">
                         <a href="#" class="btn btn-outline-primary" id="verifyBtn">

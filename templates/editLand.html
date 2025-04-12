@@ -2,98 +2,170 @@
 
 {% block content %}
 <div class="container py-5">
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('landDetails', land_id=land.id) }}">{{ land.title }}</a>
-            </li>
-            <li class="breadcrumb-item active" aria-current="page">Edit Land</li>
-        </ol>
-    </nav>
-
     <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card shadow">
+        <div class="col-lg-8 col-md-10">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('landDetails', land_id=land.id) }}">{{ land.title
+                            }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Edit Land</li>
+                </ol>
+            </nav>
+
+            <div class="card shadow-lg border-0 rounded-lg">
+                <div class="card-header bg-primary text-white text-center py-3">
+                    <h2 class="card-title mb-0"><i class="fas fa-edit me-2"></i>Edit Land Details</h2>
+                </div>
                 <div class="card-body p-4">
-                    <h1 class="card-title text-center mb-4">Edit Land Details</h1>
+                    <div class="mb-4">
+                        <p class="text-muted">Update your land's information below. All fields marked with * are
+                            required.</p>
+                    </div>
 
                     <form method="POST" action="{{ url_for('editLand', land_id=land.id) }}"
-                        enctype="multipart/form-data">
+                        enctype="multipart/form-data" class="needs-validation" novalidate>
                         <div class="row g-3">
-                            <div class="col-md-12">
-                                <label for="title" class="form-label">Land Title</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-file-signature"></i></span>
+                            <div class="col-md-12 mb-3">
+                                <label for="title" class="form-label fw-bold">Land Title *</label>
+                                <div class="input-group has-validation">
+                                    <span class="input-group-text bg-light"><i
+                                            class="fas fa-file-signature text-primary"></i></span>
                                     <input type="text" class="form-control" id="title" name="title"
                                         value="{{ land.title }}" required>
+                                    <div class="invalid-feedback">
+                                        Please provide a title for your land.
+                                    </div>
                                 </div>
                             </div>
 
-                            <div class="col-md-12">
-                                <label for="location" class="form-label">Location</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                            <div class="col-md-12 mb-3">
+                                <label for="location" class="form-label fw-bold">Location *</label>
+                                <div class="input-group has-validation">
+                                    <span class="input-group-text bg-light"><i
+                                            class="fas fa-map-marker-alt text-danger"></i></span>
                                     <input type="text" class="form-control" id="location" name="location"
                                         value="{{ land.location }}" required>
+                                    <div class="invalid-feedback">
+                                        Please provide the location of your land.
+                                    </div>
                                 </div>
-                                <div class="form-text">Enter the full address of the land.</div>
+                                <div class="form-text small">Enter the complete address or coordinates of the property.
+                                </div>
                             </div>
 
-                            <div class="col-md-12">
-                                <label for="description" class="form-label">Description</label>
+                            <div class="col-md-12 mb-3">
+                                <label for="description" class="form-label fw-bold">Description *</label>
                                 <textarea class="form-control" id="description" name="description" rows="4"
                                     required>{{ land.description }}</textarea>
-                                <div class="form-text">Provide details about the land, including size, features, etc.
+                                <div class="invalid-feedback">
+                                    Please provide a description of your land.
                                 </div>
+                                <div class="form-text small">A detailed description helps potential buyers understand
+                                    the value of your property.</div>
                             </div>
 
-                            <div class="col-md-6">
-                                <label for="price" class="form-label">Price (USD)</label>
-                                <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-dollar-sign"></i></span>
+                            <div class="col-md-6 mb-3">
+                                <label for="price" class="form-label fw-bold">Price (USD) *</label>
+                                <div class="input-group has-validation">
+                                    <span class="input-group-text bg-light"><i
+                                            class="fas fa-dollar-sign text-success"></i></span>
                                     <input type="number" class="form-control" id="price" name="price" step="0.01"
                                         min="0" value="{{ land.price }}" required>
+                                    <div class="invalid-feedback">
+                                        Please specify a valid price.
+                                    </div>
                                 </div>
+                                <div class="form-text small">Enter the price in USD. This will be converted to
+                                    cryptocurrency during transactions.</div>
                             </div>
 
-                            <div class="col-md-6">
-                                <label class="form-label d-block">Listing Status</label>
-                                <div class="form-check form-switch">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold d-block">Listing Status</label>
+                                <div class="form-check form-switch mt-2">
                                     <input class="form-check-input" type="checkbox" id="for_sale" name="for_sale" {% if
                                         land.for_sale %}checked{% endif %}>
-                                    <label class="form-check-label" for="for_sale">List for Sale</label>
+                                    <label class="form-check-label" for="for_sale">
+                                        <span class="text-success">List for Sale</span>
+                                    </label>
                                 </div>
+                                <div class="form-text small">Toggle off if you want to save the land but not list it for
+                                    sale.</div>
                             </div>
 
-                            <div class="col-md-12">
-                                <label for="land_image" class="form-label">Land Image</label>
-                                <div class="mb-2">
+                            <div class="col-md-12 mb-4">
+                                <label for="land_image" class="form-label fw-bold">Land Image</label>
+                                <div class="mb-3 text-center">
                                     <img src="{{ url_for('static', filename='uploads/' + land.image) }}"
-                                        alt="{{ land.title }}" class="img-thumbnail">
+                                        alt="{{ land.title }}" class="img-thumbnail" style="max-height: 200px">
                                 </div>
                                 <div class="input-group">
-                                    <span class="input-group-text"><i class="fas fa-image"></i></span>
+                                    <span class="input-group-text bg-light"><i
+                                            class="fas fa-image text-info"></i></span>
                                     <input type="file" class="form-control" id="land_image" name="land_image"
                                         accept="image/*">
                                 </div>
-                                <div class="form-text">Upload a new image or keep the existing one.</div>
+                                <div class="form-text small">Upload a new image or keep the existing one. Supported
+                                    formats: JPG, PNG, GIF. Max size: 16MB.</div>
                             </div>
 
-                            <div class="col-12 mt-4">
+                            <div class="col-12 mt-2">
                                 <div class="d-grid gap-2">
-                                    <button type="submit" class="btn btn-primary btn-lg">Update Land Details</button>
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-save me-2"></i>Update Land Details
+                                    </button>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <a href="{{ url_for('landDetails', land_id=land.id) }}"
+                                        class="btn btn-outline-secondary">
+                                        <i class="fas fa-arrow-left me-2"></i>Return to Land Details
+                                    </a>
                                 </div>
                             </div>
                         </div>
                     </form>
                 </div>
-            </div>
-
-            <div class="text-center mt-4">
-                <a href="{{ url_for('landDetails', land_id=land.id) }}" class="btn btn-outline-primary">Cancel and Go
-                    Back</a>
+                <div class="card-footer bg-light p-3 text-center">
+                    <small class="text-muted">Changes to your land details will be recorded on the blockchain, ensuring
+                        transparent and immutable record keeping.</small>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    // Enable Bootstrap form validation
+    (function () {
+        'use strict'
+
+        // Fetch all forms that need validation
+        var forms = document.querySelectorAll('.needs-validation')
+
+        // Loop over and prevent submission
+        Array.prototype.slice.call(forms)
+            .forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+
+                    form.classList.add('was-validated')
+                }, false)
+            })
+    })()
+
+    // Preview uploaded image
+    document.getElementById('land_image').addEventListener('change', function (e) {
+        if (e.target.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                const preview = document.querySelector('.img-thumbnail');
+                preview.src = e.target.result;
+            }
+            reader.readAsDataURL(e.target.files[0]);
+        }
+    });
+</script>
 {% endblock %}

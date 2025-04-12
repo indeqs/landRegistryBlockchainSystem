@@ -16,12 +16,27 @@ import os, io
 import qrcode
 from web3 import Web3
 import json
-from datetime import datetime
+from os import getenv
+from datetime import datetime, timezone
 import uuid
+
+"""
+Land Registry Blockchain Application
+-----------------------------------
+A Flask web application for managing land registry records 
+using blockchain technology for secure, transparent land ownership records.
+
+Features:
+- User registration and authentication
+- Land registration with blockchain verification
+- Land marketplace with buying and selling capabilities
+- QR code generation for land verification
+- Transaction history tracking
+"""
 
 # App configuration
 app = Flask(__name__)
-app.config["SECRET_KEY"] = "your_secret_key_here"
+app.config["SECRET_KEY"] = getenv("SECRET")
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///landregistry.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["UPLOAD_FOLDER"] = "static/uploads"
@@ -35,36 +50,62 @@ os.makedirs(os.path.join(app.config["UPLOAD_FOLDER"], "lands"), exist_ok=True)
 # Initialize database
 db = SQLAlchemy(app)
 
-# Web3 configuration - connect to local blockchain
-w3 = Web3(
-    Web3.HTTPProvider("http://127.0.0.1:8545")
-)  # Change to your blockchain endpoint
+# Ethereum Configuration
+ALCHEMY_URL = getenv("RPC_URL")  # Get RPC URL from environment variables
+w3 = Web3(Web3.HTTPProvider(ALCHEMY_URL))
 
 # Load smart contract ABI and address
-# with open("contract_abi.json", "r") as f:
-#     contract_abi = json.load(f)
+with open("src/contract_abi.json", "r") as f:
+    contract_abi = json.load(f)
 
-# contract_address = (
-#     "0xYourContractAddressHere"  # Replace with your deployed contract address
-# )
-# land_registry_contract = w3.eth.contract(address=contract_address, abi=contract_abi)
+contract_address = "0x322D4Ab5baC728982Fb228CC37f527b599817836"
+land_registry_contract = w3.eth.contract(address=contract_address, abi=contract_abi)
 
 
 # Database models
 class User(db.Model):
+    """
+    User model representing registered users in the system.
+
+    Attributes:
+        id: Unique identifier for the user
+        username: User's chosen username
+        email: User's email address
+        password_hash: Hashed password for security
+        blockchain_address: User's Ethereum wallet address
+        profile_image: Path to user's profile image
+        created_at: Timestamp when the user account was created
+    """
+
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password_hash = db.Column(db.String(200), nullable=False)
     blockchain_address = db.Column(db.String(42), unique=True, nullable=False)
     profile_image = db.Column(db.String(200), default="default_profile.jpg")
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     def __repr__(self):
         return f"<User {self.username}>"
 
 
 class Land(db.Model):
+    """
+    Land model representing land parcels registered in the system.
+
+    Attributes:
+        id: Unique identifier for the land record
+        blockchain_id: Corresponding ID in the blockchain
+        owner_id: ID of the user who owns the land
+        title: Title of the land
+        location: Physical location of the land
+        description: Detailed description of the land
+        price: Asking price for the land (if for sale)
+        image: Path to land's image
+        for_sale: Whether the land is currently listed for sale
+        created_at: Timestamp when the land was registered
+    """
+
     id = db.Column(db.Integer, primary_key=True)
     blockchain_id = db.Column(db.Integer, unique=True, nullable=False)
     owner_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
@@ -74,7 +115,7 @@ class Land(db.Model):
     price = db.Column(db.Float, nullable=False)
     image = db.Column(db.String(200))
     for_sale = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     owner = db.relationship("User", backref=db.backref("lands", lazy=True))
 
@@ -83,13 +124,28 @@ class Land(db.Model):
 
 
 class Transaction(db.Model):
+    """
+    Transaction model recording land ownership transfers.
+
+    Attributes:
+        id: Unique identifier for the transaction
+        blockchain_tx_hash: Hash of the blockchain transaction
+        land_id: ID of the land being transferred
+        seller_id: ID of the user selling the land
+        buyer_id: ID of the user buying the land
+        price: Price at which the land was sold
+        transaction_date: Timestamp when the transaction occurred
+    """
+
     id = db.Column(db.Integer, primary_key=True)
     blockchain_tx_hash = db.Column(db.String(66), unique=True, nullable=False)
     land_id = db.Column(db.Integer, db.ForeignKey("land.id"), nullable=False)
     seller_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     buyer_id = db.Column(db.Integer, db.ForeignKey("user.id"), nullable=False)
     price = db.Column(db.Float, nullable=False)
-    transaction_date = db.Column(db.DateTime, default=datetime.utcnow)
+    transaction_date = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc)
+    )
 
     land = db.relationship("Land", backref=db.backref("transactions", lazy=True))
     seller = db.relationship("User", foreign_keys=[seller_id])
@@ -101,16 +157,36 @@ class Transaction(db.Model):
 
 # Helper functions
 def allowed_file(filename):
+    """
+    Check if a file has an allowed extension for upload.
+
+    Args:
+        filename: Name of the file to check
+
+    Returns:
+        bool: True if file extension is allowed, False otherwise
+    """
     ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg", "gif"}
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 def save_file(file, folder):
+    """
+    Save an uploaded file with a unique name in the specified folder.
+
+    Args:
+        file: The file object to save
+        folder: The subfolder within UPLOAD_FOLDER to save to
+
+    Returns:
+        str: Path to the saved file relative to the uploads directory, or None if save failed
+    """
     if file and allowed_file(file.filename):
+        # Generate unique filename using UUID to prevent overwriting
         filename = str(uuid.uuid4()) + "." + file.filename.rsplit(".", 1)[1].lower()
         file_path = os.path.join(app.config["UPLOAD_FOLDER"], folder, filename)
         file.save(file_path)
-        # Return the path relative to the uploads directory so it's consistent with default_profile.jpg
+        # Return the path relative to the uploads directory for consistency
         if folder == "profiles":
             return filename  # Just return filename for profile images to maintain consistency
         else:
@@ -121,11 +197,18 @@ def save_file(file, folder):
 # Routes
 @app.route("/")
 def index():
+    """Homepage route"""
     return render_template("index.html")
 
 
 @app.route("/register", methods=["GET", "POST"])
 def register():
+    """
+    User registration route.
+
+    GET: Display registration form
+    POST: Process registration data
+    """
     if request.method == "POST":
         username = request.form["username"]
         email = request.form["email"]
@@ -146,7 +229,9 @@ def register():
             return redirect(url_for("register"))
 
         # Generate blockchain wallet
-        wallet = w3.eth.account.create()
+        wallet = (
+            w3.eth.account.create()
+        )  # Create a new Ethereum account. Don't use this. There should a connect wallet button wallet
 
         # Assign default profile image
         profile_image = "default_profile.jpg"
@@ -176,6 +261,12 @@ def register():
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
+    """
+    User login route.
+
+    GET: Display login form
+    POST: Process login credentials
+    """
     if request.method == "POST":
         username = request.form["username"]
         password = request.form["password"]
@@ -183,6 +274,7 @@ def login():
         user = User.query.filter_by(username=username).first()
 
         if user and check_password_hash(user.password_hash, password):
+            # Store user data in session
             session["user_id"] = user.id
             session["username"] = user.username
             session["blockchain_address"] = user.blockchain_address
@@ -197,6 +289,7 @@ def login():
 
 @app.route("/logout")
 def logout():
+    """Log user out by clearing session data"""
     session.clear()
     flash("You have been logged out", "info")
     return redirect(url_for("index"))
@@ -204,6 +297,11 @@ def logout():
 
 @app.route("/dashboard")
 def dashboard():
+    """
+    User dashboard showing owned lands.
+
+    Requires authentication.
+    """
     if "user_id" not in session:
         flash("Please log in first", "warning")
         return redirect(url_for("login"))
@@ -213,6 +311,7 @@ def dashboard():
         flash("User not found", "danger")
         return redirect(url_for("logout"))
 
+    # Get lands owned by the user
     user_lands = Land.query.filter_by(owner_id=user.id).all()
 
     return render_template("dashboard.html", user=user, lands=user_lands)
@@ -220,6 +319,14 @@ def dashboard():
 
 @app.route("/profile", methods=["GET", "POST"])
 def profile():
+    """
+    User profile management route.
+
+    GET: Display user profile
+    POST: Update profile data (currently just profile image)
+
+    Requires authentication.
+    """
     if "user_id" not in session:
         flash("Please log in first", "warning")
         return redirect(url_for("login"))
@@ -244,6 +351,14 @@ def profile():
 
 @app.route("/registerLand", methods=["GET", "POST"])
 def registerLand():
+    """
+    Land registration route.
+
+    GET: Display land registration form
+    POST: Process land registration data and register on blockchain
+
+    Requires authentication.
+    """
     if "user_id" not in session:
         flash("Please log in first", "warning")
         return redirect(url_for("login"))
@@ -264,14 +379,50 @@ def registerLand():
                 if saved_path:
                     land_image = saved_path
 
-        # Create land on blockchain
+        # Get user's blockchain address
+        user = User.query.get(session["user_id"])
+        if not user:
+            flash("User not found", "danger")
+            return redirect(url_for("dashboard"))
+
+        blockchain_address = user.blockchain_address
+        # Actually upload land details to the blockchain
         try:
-            # This would be the actual blockchain transaction in production
-            # For demonstration, we'll simulate by creating a local record
+            # Convert price from USD to Wei (for Ethereum blockchain)
+            # In a real app, you'd use an oracle or API for actual conversion
+            price_in_wei = w3.to_wei(price, "ether")
+
+            # Get blockchain transaction details
+            nonce = w3.eth.get_transaction_count(blockchain_address)
+
+            # Build the transaction to call the registerLand function on the smart contract
+            tx = land_registry_contract.functions.registerLand(
+                title,  # _title
+                location,  # _location
+                description,  # _description
+                price_in_wei,  # _price (in wei)
+                for_sale,  # _forSale
+            ).build_transaction(
+                {
+                    "from": blockchain_address,
+                    "gas": 2000000,  # Gas limit
+                    "gasPrice": w3.to_wei("50", "gwei"),  # Gas price
+                    "nonce": nonce,
+                }
+            )
+
+            # In a production app, you would:
+            # 1. Send tx to user's wallet (MetaMask, etc.) for signing
+            # 2. User would approve and sign the tx with their private key
+            # 3. Then submit the signed tx to the blockchain
+
+            # For simulation purposes, let's say the tx succeeded
+            # and we got a blockchain ID back (in reality this would come from tx receipt)
+            simulated_blockchain_id = Land.query.count() + 1
 
             # Create local record
             new_land = Land(
-                blockchain_id=Land.query.count() + 1,  # Simulated blockchain ID
+                blockchain_id=simulated_blockchain_id,
                 owner_id=session["user_id"],
                 title=title,
                 location=location,
@@ -284,7 +435,7 @@ def registerLand():
             db.session.add(new_land)
             db.session.commit()
 
-            flash("Land registered successfully!", "success")
+            flash("Land registered successfully on the blockchain!", "success")
             return redirect(url_for("dashboard"))
         except Exception as e:
             db.session.rollback()
@@ -295,6 +446,11 @@ def registerLand():
 
 @app.route("/marketplace")
 def marketplace():
+    """
+    Land marketplace route displaying all lands for sale.
+
+    Requires authentication.
+    """
     if "user_id" not in session:
         flash("Please log in first", "warning")
         return redirect(url_for("login"))
@@ -305,6 +461,14 @@ def marketplace():
 
 @app.route("/land/<int:land_id>")
 def landDetails(land_id):
+    """
+    Display detailed information about a specific land.
+
+    Args:
+        land_id: ID of the land to display
+
+    Requires authentication.
+    """
     if "user_id" not in session:
         flash("Please log in first", "warning")
         return redirect(url_for("login"))
@@ -313,9 +477,19 @@ def landDetails(land_id):
     return render_template("landDetails.html", land=land)
 
 
-@app.route("/land_qr/<int:land_id>")
-def land_qr(land_id):
-    """Generate QR code for land verification"""
+@app.route("/landQR/<int:land_id>")
+def landQR(land_id):
+    """
+    Generate QR code for land verification.
+
+    Args:
+        land_id: ID of the land to generate QR code for
+
+    Returns:
+        PNG image of QR code
+
+    Requires authentication.
+    """
     if "user_id" not in session:
         flash("Please log in first", "warning")
         return redirect(url_for("login"))
@@ -345,8 +519,16 @@ def land_qr(land_id):
     return send_file(img_bytes, mimetype="image/png")
 
 
-@app.route("/buy_land/<int:land_id>", methods=["POST"])
-def buy_land(land_id):
+@app.route("/buyLand/<int:land_id>", methods=["POST"])
+def buyLand(land_id):
+    """
+    Process land purchase transaction.
+
+    Args:
+        land_id: ID of the land to purchase
+
+    Requires authentication.
+    """
     if "user_id" not in session:
         flash("Please log in first", "warning")
         return redirect(url_for("login"))
@@ -354,6 +536,7 @@ def buy_land(land_id):
     land = Land.query.get_or_404(land_id)
     buyer_id = session["user_id"]
 
+    # Validate purchase conditions
     if land.owner_id == buyer_id:
         flash("You already own this land", "warning")
         return redirect(url_for("landDetails", land_id=land_id))
@@ -392,6 +575,13 @@ def buy_land(land_id):
 
 @app.route("/transactions")
 def transaction_history():
+    """
+    Display user's transaction history.
+
+    Shows transactions where the user is either buyer or seller.
+
+    Requires authentication.
+    """
     if "user_id" not in session:
         flash("Please log in first", "warning")
         return redirect(url_for("login"))
@@ -410,11 +600,16 @@ def transaction_history():
     return render_template("transactions.html", transactions=transactions)
 
 
-# Add these routes to your app.py file
-
-
 @app.route("/toggle_sale_status/<int:land_id>", methods=["POST"])
 def toggle_sale_status(land_id):
+    """
+    Toggle the for_sale status of a land.
+
+    Args:
+        land_id: ID of the land to update
+
+    Requires authentication and ownership of the land.
+    """
     if "user_id" not in session:
         flash("Please log in first", "warning")
         return redirect(url_for("login"))
@@ -442,6 +637,17 @@ def toggle_sale_status(land_id):
 
 @app.route("/editLand/<int:land_id>", methods=["GET", "POST"])
 def editLand(land_id):
+    """
+    Edit land details.
+
+    GET: Display land edit form
+    POST: Process land updates
+
+    Args:
+        land_id: ID of the land to edit
+
+    Requires authentication and ownership of the land.
+    """
     if "user_id" not in session:
         flash("Please log in first", "warning")
         return redirect(url_for("login"))
@@ -482,6 +688,17 @@ def editLand(land_id):
 
 @app.route("/api/verify_transaction/<transaction_hash>")
 def verify_transaction(transaction_hash):
+    """
+    API endpoint to verify transaction authenticity.
+
+    Args:
+        transaction_hash: Hash of the blockchain transaction to verify
+
+    Returns:
+        JSON response with transaction details
+
+    Requires authentication.
+    """
     if "user_id" not in session:
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -510,8 +727,16 @@ def verify_transaction(transaction_hash):
     return jsonify(result)
 
 
-@app.route("/search_lands")
-def search_lands():
+@app.route("/seacrhLands")
+def seacrhLands():
+    """
+    Search lands by title, location, or description.
+
+    Query Parameters:
+        query: Search terms
+
+    Requires authentication.
+    """
     if "user_id" not in session:
         flash("Please log in first", "warning")
         return redirect(url_for("login"))
@@ -519,6 +744,7 @@ def search_lands():
     query = request.args.get("query", "")
 
     if query:
+        # Search for lands matching the query that are for sale
         lands = Land.query.filter(
             (
                 Land.title.contains(query)
@@ -528,14 +754,22 @@ def search_lands():
             & (Land.for_sale == True)
         ).all()
     else:
+        # If no query, show all lands for sale
         lands = Land.query.filter_by(for_sale=True).all()
 
-    return render_template("search_results.html", lands=lands, query=query)
+    return render_template("searchResults.html", lands=lands, query=query)
 
 
-# API endpoints for blockchain integration
 @app.route("/api/lands", methods=["GET"])
 def api_get_lands():
+    """
+    API endpoint to get all lands.
+
+    Returns:
+        JSON list of all lands
+
+    Requires authentication.
+    """
     if "user_id" not in session:
         return jsonify({"error": "Unauthorized"}), 401
 

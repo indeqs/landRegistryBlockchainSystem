@@ -18,11 +18,37 @@
                 <div class="card-body p-4">
                     <div class="mb-4">
                         <p class="text-muted">Complete the form below to register your land on the blockchain. All
-                            fields marked with * are required.</p>
+                            fields marked with * are required. <strong>You will need a connected wallet to complete this
+                                transaction.</strong></p>
                     </div>
 
-                    <form method="POST" action="{{ url_for('registerLand') }}" enctype="multipart/form-data"
-                        class="needs-validation" novalidate>
+                    <!-- Wallet Connection Status -->
+                    <div class="alert alert-info mb-4">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <i class="fas fa-wallet fa-2x"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-1">Blockchain Wallet</h5>
+                                <p class="mb-2">Registering land requires a blockchain transaction. Please make sure
+                                    your wallet is connected.</p>
+                                <div class="d-flex align-items-center">
+                                    <span id="wallet-status-inline" class="badge bg-danger me-2">Not Connected</span>
+                                    <span id="wallet-address-inline" class="text-muted me-2">No wallet connected</span>
+                                    <button id="connect-wallet-btn-inline" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-plug me-1"></i> Connect Wallet
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form id="registerLandForm" method="POST" action="{{ url_for('registerLand') }}"
+                        enctype="multipart/form-data" class="needs-validation" novalidate>
+                        <!-- Hidden fields for blockchain data -->
+                        <input type="hidden" id="blockchain_tx_hash" name="blockchain_tx_hash">
+                        <input type="hidden" id="blockchain_id" name="blockchain_id">
+
                         <div class="row g-3">
                             <div class="col-md-12 mb-3">
                                 <label for="title" class="form-label fw-bold">Land Title *</label>
@@ -30,7 +56,8 @@
                                     <span class="input-group-text bg-light"><i
                                             class="fas fa-file-signature text-primary"></i></span>
                                     <input type="text" class="form-control" id="title" name="title"
-                                        placeholder="Enter property title" required>
+                                        placeholder="Enter property title" required {% if form_data
+                                        %}value="{{ form_data.title }}" {% endif %}>
                                     <div class="invalid-feedback">
                                         Please provide a title for your land.
                                     </div>
@@ -43,7 +70,8 @@
                                     <span class="input-group-text bg-light"><i
                                             class="fas fa-map-marker-alt text-danger"></i></span>
                                     <input type="text" class="form-control" id="location" name="location"
-                                        placeholder="123 Main St, City, Country" required>
+                                        placeholder="123 Main St, City, Country" required {% if form_data
+                                        %}value="{{ form_data.location }}" {% endif %}>
                                     <div class="invalid-feedback">
                                         Please provide the location of your land.
                                     </div>
@@ -56,7 +84,7 @@
                                 <label for="description" class="form-label fw-bold">Description *</label>
                                 <textarea class="form-control" id="description" name="description" rows="4"
                                     placeholder="Describe your property including size, features, and other relevant details..."
-                                    required></textarea>
+                                    required>{% if form_data %}{{ form_data.description }}{% endif %}</textarea>
                                 <div class="invalid-feedback">
                                     Please provide a description of your land.
                                 </div>
@@ -70,7 +98,8 @@
                                     <span class="input-group-text bg-light"><i
                                             class="fas fa-dollar-sign text-success"></i></span>
                                     <input type="number" class="form-control" id="price" name="price" step="0.01"
-                                        min="0" placeholder="0.00" required>
+                                        min="0" placeholder="0.00" required {% if form_data
+                                        %}value="{{ form_data.price }}" {% endif %}>
                                     <div class="invalid-feedback">
                                         Please specify a valid price.
                                     </div>
@@ -82,8 +111,8 @@
                             <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold d-block">Listing Status</label>
                                 <div class="form-check form-switch mt-2">
-                                    <input class="form-check-input" type="checkbox" id="for_sale" name="for_sale"
-                                        checked>
+                                    <input class="form-check-input" type="checkbox" id="for_sale" name="for_sale" {% if
+                                        form_data is not defined or form_data.for_sale %}checked{% endif %}>
                                     <label class="form-check-label" for="for_sale">
                                         <span class="text-success">List for Sale</span>
                                     </label>
@@ -107,9 +136,18 @@
                                     JPG, PNG, GIF. Max size: 16MB.</div>
                             </div>
 
+                            {% if form_data and form_data.image %}
+                            <div id="imagePreview" class="col-md-12 mb-3 text-center">
+                                <p class="text-muted mb-2">Image Preview:</p>
+                                <img src="{{ url_for('static', filename='uploads/' + form_data.image) }}"
+                                    class="img-thumbnail" style="max-height: 200px">
+                            </div>
+                            {% endif %}
+
                             <div class="col-12 mt-2">
                                 <div class="d-grid gap-2">
-                                    <button type="submit" class="btn btn-primary btn-lg">
+                                    <button type="button" id="register-blockchain-btn"
+                                        class="btn btn-primary btn-lg requires-wallet" disabled>
                                         <i class="fas fa-save me-2"></i>Register Land on Blockchain
                                     </button>
                                 </div>
@@ -131,49 +169,89 @@
     </div>
 </div>
 
+<!-- Transaction processing modal -->
+<div class="modal fade" id="transactionModal" tabindex="-1" aria-labelledby="transactionModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="transactionModalLabel">Processing Blockchain Transaction</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div id="transaction-pending">
+                    <div class="d-flex justify-content-center mb-3">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <p class="text-center">Please approve the transaction in your wallet...</p>
+                    <p class="text-center small text-muted">This will create a permanent record of your land on the
+                        blockchain.</p>
+                </div>
+                <div id="transaction-success" style="display: none;">
+                    <div class="text-center text-success mb-3">
+                        <i class="fas fa-check-circle fa-3x"></i>
+                    </div>
+                    <p class="text-center">Transaction completed successfully!</p>
+                </div>
+                <div id="transaction-error" style="display: none;">
+                    <div class="text-center text-danger mb-3">
+                        <i class="fas fa-times-circle fa-3x"></i>
+                    </div>
+                    <p class="text-center">An error occurred during the transaction. Please try again.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-    // Enable Bootstrap form validation
-    (function () {
-        'use strict'
+    document.addEventListener('DOMContentLoaded', function () {
+        const registerButton = document.getElementById('register-blockchain-btn');
+        const transactionModal = new bootstrap.Modal(document.getElementById('transactionModal'));
 
-        // Fetch all forms that need validation
-        var forms = document.querySelectorAll('.needs-validation')
+        registerButton.addEventListener('click', async function () {
+            transactionModal.show();
+            document.getElementById('transaction-pending').style.display = 'block';
+            document.getElementById('transaction-success').style.display = 'none';
+            document.getElementById('transaction-error').style.display = 'none';
 
-        // Loop over and prevent submission
-        Array.prototype.slice.call(forms)
-            .forEach(function (form) {
-                form.addEventListener('submit', function (event) {
-                    if (!form.checkValidity()) {
-                        event.preventDefault()
-                        event.stopPropagation()
-                    }
+            try {
+                const landData = {
+                    title: document.getElementById('title').value,
+                    location: document.getElementById('location').value,
+                    description: document.getElementById('description').value,
+                    price: document.getElementById('price').value,
+                    forSale: document.getElementById('for_sale').checked
+                };
 
-                    form.classList.add('was-validated')
-                }, false)
-            })
-    })()
+                const result = await registerLandOnBlockchain(landData);
 
-    // Preview uploaded image
-    document.getElementById('land_image').addEventListener('change', function (e) {
-        if (document.getElementById('imagePreview')) {
-            document.getElementById('imagePreview').remove();
-        }
+                if (result.success) {
+                    document.getElementById('blockchain_tx_hash').value = result.transactionHash;
+                    document.getElementById('blockchain_id').value = result.blockchainId;
 
-        if (e.target.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function (e) {
-                const preview = document.createElement('div');
-                preview.id = 'imagePreview';
-                preview.className = 'mt-3 text-center';
-                preview.innerHTML = `
-                <p class="text-muted mb-2">Image Preview:</p>
-                <img src="${e.target.result}" class="img-thumbnail" style="max-height: 200px">
-            `;
+                    document.getElementById('transaction-pending').style.display = 'none';
+                    document.getElementById('transaction-success').style.display = 'block';
 
-                e.target.parentElement.parentElement.appendChild(preview);
+                    setTimeout(() => {
+                        document.getElementById('registerLandForm').submit();
+                    }, 2000);
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('Error registering land:', error);
+                document.getElementById('transaction-pending').style.display = 'none';
+                document.getElementById('transaction-error').style.display = 'block';
             }
-            reader.readAsDataURL(e.target.files[0]);
-        }
+        });
     });
 </script>
 {% endblock %}

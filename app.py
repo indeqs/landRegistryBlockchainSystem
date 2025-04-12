@@ -348,6 +348,37 @@ def profile():
 
     return render_template("profile.html", user=user)
 
+@app.route('/update_wallet_address', methods=['POST'])
+def update_wallet_address():
+    """
+    Update user's blockchain wallet address.
+    
+    Used when a user connects their MetaMask wallet.
+    
+    Requires authentication.
+    """
+    if 'user_id' not in session:
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 401
+    
+    try:
+        data = request.json
+        address = data.get('address')
+        
+        if not address or not address.startswith('0x') or len(address) != 42:
+            return jsonify({'success': False, 'error': 'Invalid wallet address'}), 400
+        
+        user = User.query.get(session['user_id'])
+        if not user:
+            return jsonify({'success': False, 'error': 'User not found'}), 404
+        
+        user.blockchain_address = address
+        db.session.commit()
+        
+        return jsonify({'success': True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    
 
 @app.route("/registerLand", methods=["GET", "POST"])
 def registerLand():
@@ -355,7 +386,7 @@ def registerLand():
     Land registration route.
 
     GET: Display land registration form
-    POST: Process land registration data and register on blockchain
+    POST: Process land registration data for blockchain transaction
 
     Requires authentication.
     """
@@ -369,7 +400,9 @@ def registerLand():
         description = request.form["description"]
         price = float(request.form["price"])
         for_sale = "for_sale" in request.form
-
+        blockchain_tx_hash = request.form.get("blockchain_tx_hash")
+        blockchain_id = request.form.get("blockchain_id")
+        
         # Save land image
         land_image = "default_land.png"
         if "land_image" in request.files:
@@ -379,67 +412,44 @@ def registerLand():
                 if saved_path:
                     land_image = saved_path
 
-        # Get user's blockchain address
-        user = User.query.get(session["user_id"])
-        if not user:
-            flash("User not found", "danger")
-            return redirect(url_for("dashboard"))
+        # If we have a blockchain transaction hash and ID, save the land to database
+        if blockchain_tx_hash and blockchain_id:
+            try:
+                # Create local record
+                new_land = Land(
+                    blockchain_id=int(blockchain_id),
+                    owner_id=session["user_id"],
+                    title=title,
+                    location=location,
+                    description=description,
+                    price=price,
+                    image=land_image,
+                    for_sale=for_sale,
+                )
 
-        blockchain_address = user.blockchain_address
-        # Actually upload land details to the blockchain
-        try:
-            # Convert price from USD to Wei (for Ethereum blockchain)
-            # In a real app, you'd use an oracle or API for actual conversion
-            price_in_wei = w3.to_wei(price, "ether")
+                db.session.add(new_land)
+                db.session.commit()
 
-            # Get blockchain transaction details
-            nonce = w3.eth.get_transaction_count(blockchain_address)
-
-            # Build the transaction to call the registerLand function on the smart contract
-            tx = land_registry_contract.functions.registerLand(
-                title,  # _title
-                location,  # _location
-                description,  # _description
-                price_in_wei,  # _price (in wei)
-                for_sale,  # _forSale
-            ).build_transaction(
-                {
-                    "from": blockchain_address,
-                    "gas": 2000000,  # Gas limit
-                    "gasPrice": w3.to_wei("50", "gwei"),  # Gas price
-                    "nonce": nonce,
+                flash("Land registered successfully on the blockchain!", "success")
+                return redirect(url_for("dashboard"))
+            except Exception as e:
+                db.session.rollback()
+                flash(f"An error occurred: {str(e)}", "danger")
+                return redirect(url_for("registerLand"))
+        else:
+            # This is the initial form submission without blockchain confirmation
+            # Just render the template with the form data for the frontend to handle the transaction
+            return render_template(
+                "registerLand.html", 
+                form_data={
+                    'title': title,
+                    'location': location,
+                    'description': description,
+                    'price': price,
+                    'for_sale': for_sale,
+                    'image': land_image if land_image != "default_land.png" else None
                 }
             )
-
-            # In a production app, you would:
-            # 1. Send tx to user's wallet (MetaMask, etc.) for signing
-            # 2. User would approve and sign the tx with their private key
-            # 3. Then submit the signed tx to the blockchain
-
-            # For simulation purposes, let's say the tx succeeded
-            # and we got a blockchain ID back (in reality this would come from tx receipt)
-            simulated_blockchain_id = Land.query.count() + 1
-
-            # Create local record
-            new_land = Land(
-                blockchain_id=simulated_blockchain_id,
-                owner_id=session["user_id"],
-                title=title,
-                location=location,
-                description=description,
-                price=price,
-                image=land_image,
-                for_sale=for_sale,
-            )
-
-            db.session.add(new_land)
-            db.session.commit()
-
-            flash("Land registered successfully on the blockchain!", "success")
-            return redirect(url_for("dashboard"))
-        except Exception as e:
-            db.session.rollback()
-            flash(f"An error occurred: {str(e)}", "danger")
 
     return render_template("registerLand.html")
 
@@ -545,31 +555,36 @@ def buyLand(land_id):
         flash("This land is not for sale", "warning")
         return redirect(url_for("landDetails", land_id=land_id))
 
-    try:
-        # In a real application, this would involve a blockchain transaction
-        # For demonstration, we'll simulate the transaction
+    # Get blockchain transaction hash from form
+    blockchain_tx_hash = request.form.get("blockchain_tx_hash")
+    
+    if blockchain_tx_hash:
+        try:
+            # Record the transaction
+            transaction = Transaction(
+                blockchain_tx_hash=blockchain_tx_hash,
+                land_id=land.id,
+                seller_id=land.owner_id,
+                buyer_id=buyer_id,
+                price=land.price,
+            )
 
-        # Record the transaction
-        transaction = Transaction(
-            blockchain_tx_hash=f"0x{os.urandom(32).hex()}",  # Simulated transaction hash
-            land_id=land.id,
-            seller_id=land.owner_id,
-            buyer_id=buyer_id,
-            price=land.price,
-        )
+            # Transfer ownership
+            land.owner_id = buyer_id
+            land.for_sale = False
 
-        # Transfer ownership
-        land.owner_id = buyer_id
-        land.for_sale = False
+            db.session.add(transaction)
+            db.session.commit()
 
-        db.session.add(transaction)
-        db.session.commit()
-
-        flash("Land purchased successfully!", "success")
-        return redirect(url_for("dashboard"))
-    except Exception as e:
-        db.session.rollback()
-        flash(f"An error occurred: {str(e)}", "danger")
+            flash("Land purchased successfully!", "success")
+            return redirect(url_for("dashboard"))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"An error occurred: {str(e)}", "danger")
+            return redirect(url_for("landDetails", land_id=land_id))
+    else:
+        # No blockchain transaction hash - return to land details
+        flash("Blockchain transaction required to complete purchase", "warning")
         return redirect(url_for("landDetails", land_id=land_id))
 
 
@@ -641,7 +656,7 @@ def editLand(land_id):
     Edit land details.
 
     GET: Display land edit form
-    POST: Process land updates
+    POST: Process land updates with blockchain transaction
 
     Args:
         land_id: ID of the land to edit
@@ -660,28 +675,39 @@ def editLand(land_id):
         return redirect(url_for("landDetails", land_id=land_id))
 
     if request.method == "POST":
-        try:
-            land.title = request.form["title"]
-            land.location = request.form["location"]
-            land.description = request.form["description"]
-            land.price = float(request.form["price"])
-            land.for_sale = "for_sale" in request.form
+        blockchain_tx_hash = request.form.get("blockchain_tx_hash")
+        
+        # Only update if we have blockchain confirmation
+        if blockchain_tx_hash:
+            try:
+                land.title = request.form["title"]
+                land.location = request.form["location"]
+                land.description = request.form["description"]
+                land.price = float(request.form["price"])
+                land.for_sale = "for_sale" in request.form
 
-            # Update land image if provided
-            if "land_image" in request.files:
-                file = request.files["land_image"]
-                if file.filename:
-                    saved_path = save_file(file, "lands")
-                    if saved_path:
-                        land.image = saved_path
+                # Update land image if provided
+                if "land_image" in request.files:
+                    file = request.files["land_image"]
+                    if file.filename:
+                        saved_path = save_file(file, "lands")
+                        if saved_path:
+                            land.image = saved_path
 
-            db.session.commit()
+                db.session.commit()
 
-            flash("Land details updated successfully", "success")
-            return redirect(url_for("landDetails", land_id=land_id))
-        except Exception as e:
-            db.session.rollback()
-            flash(f"An error occurred: {str(e)}", "danger")
+                flash("Land details updated successfully on the blockchain", "success")
+                return redirect(url_for("landDetails", land_id=land_id))
+            except Exception as e:
+                db.session.rollback()
+                flash(f"An error occurred: {str(e)}", "danger")
+        else:
+            # Form submission without blockchain transaction - return the form with values
+            return render_template(
+                "editLand.html", 
+                land=land,
+                form_submission=True
+            )
 
     return render_template("editLand.html", land=land)
 
